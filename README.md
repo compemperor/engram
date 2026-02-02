@@ -4,6 +4,12 @@
 
 Self-improving memory system with quality control, drift detection, and learning framework. Built for AI agents that need to learn, remember, and self-correct - with full privacy and zero API costs.
 
+---
+
+**🤖 For AI Agents:** See [AGENTS.md](AGENTS.md) for quick integration guide
+
+---
+
 ## Features
 
 🔒 **Privacy-First** - Local embeddings, no data leaves your machine  
@@ -13,67 +19,117 @@ Self-improving memory system with quality control, drift detection, and learning
 🔌 **Framework-Agnostic** - Works with any LLM  
 📦 **All-in-One** - Single Docker container, FastAPI server  
 
+---
+
 ## Quick Start
 
-```bash
-# Docker (recommended)
-docker run -d -p 8765:8765 -v ./memories:/data/memories compemperor/engram:latest
+### Docker (Recommended)
 
-# Or run locally
-pip install -r requirements.txt
-python -m engram.api
+```bash
+docker run -d -p 8765:8765 -v ./memories:/data/memories compemperor/engram:latest
 ```
 
-## API Endpoints
+### Local
 
-### Memory Operations
-- `POST /memory/add` - Add lesson/memory
-- `POST /memory/search` - Semantic search
-- `GET /memory/recall/{topic}` - Get all memories for topic
-- `GET /memory/stats` - Memory statistics
+```bash
+pip install -r requirements.txt
+python -m engram
+```
 
-### Learning Sessions
-- `POST /learning/session/start` - Start learning session
-- `POST /learning/session/explore` - Explore sources
-- `POST /learning/session/verify` - Self-verification checkpoint
-- `POST /learning/session/consolidate` - Consolidate & save quality learnings
+**API:** http://localhost:8765  
+**Docs:** http://localhost:8765/docs (interactive OpenAPI)
 
-### Quality & Drift
-- `POST /mirror/evaluate` - Evaluate session quality
-- `GET /mirror/drift` - Check drift metrics
-- `POST /mirror/consolidate` - Quality-filtered consolidation
+---
 
-### Health
-- `GET /health` - Service health check
-- `GET /` - API documentation (OpenAPI/Swagger)
+## Basic Usage
+
+### Add Memory
+
+```bash
+curl -X POST http://localhost:8765/memory/add \
+  -H "Content-Type: application/json" \
+  -d '{"topic":"coding","lesson":"Always validate inputs","source_quality":9}'
+```
+
+### Search
+
+```bash
+curl -X POST http://localhost:8765/memory/search \
+  -H "Content-Type: application/json" \
+  -d '{"query":"best practices","top_k":5}'
+```
+
+### Python
+
+```python
+import requests
+
+api = "http://localhost:8765"
+
+# Store
+requests.post(f"{api}/memory/add", json={
+    "topic": "debugging",
+    "lesson": "Check logs first",
+    "source_quality": 9
+})
+
+# Search
+r = requests.post(f"{api}/memory/search", json={
+    "query": "debugging",
+    "top_k": 5
+})
+print(r.json()["results"])
+```
+
+---
 
 ## Architecture
 
-```
-┌─────────────────────────────┐
-│   FastAPI Server            │  <- REST API, OpenAPI docs
-├─────────────────────────────┤
-│   Mirror (Quality Layer)    │  <- Self-evaluation, drift detection
-├─────────────────────────────┤
-│   Learning (Sessions)       │  <- Structured learning with verification
-├─────────────────────────────┤
-│   Memory (Storage + Search) │  <- FAISS, embeddings, recall
-└─────────────────────────────┘
-```
+Three layers working together:
+
+1. **Memory** - Local embeddings (sentence-transformers) + FAISS vector search
+2. **Mirror** - Quality evaluation, drift detection, consolidation decisions
+3. **Learning** - Structured sessions with self-verification checkpoints
+
+**API Server:** FastAPI with 19 REST endpoints, OpenAPI docs
+
+---
 
 ## Use Cases
 
-- **AI Agents** - Give your agent persistent memory with quality control
-- **Personal Knowledge Base** - Build your external brain
-- **Research Assistants** - Track learnings over time with drift detection
-- **Trading Bots** - Remember lessons, prevent repeating mistakes
-- **Chatbots** - Maintain context and personality across sessions
+- **AI Agents** - Persistent memory with quality control
+- **Personal Knowledge** - Build your external brain
+- **Research** - Track learnings with drift detection
+- **Trading Bots** - Remember lessons, prevent mistakes
+- **Chatbots** - Maintain context across sessions
+
+---
+
+## Documentation
+
+- **[AGENTS.md](AGENTS.md)** - Quick guide for AI agents
+- **[QUICKSTART.md](QUICKSTART.md)** - 5-minute tutorial
+- **[examples/](examples/)** - Code examples
+- **[/docs](http://localhost:8765/docs)** - Interactive API docs (when running)
+
+---
+
+## Technology
+
+- Python 3.11, FastAPI, Pydantic
+- sentence-transformers (local embeddings)
+- FAISS (vector search, CPU-only)
+- Docker (one-command deploy)
+
+---
 
 ## Built Upon
 
 - [Butterfly RSI](https://github.com/ButterflyRSI/Butterfly-RSI) - Drift detection & dream consolidation
 - ICLR 2026 Workshop - Recursive self-improvement research
 - Neuroscience - Memory consolidation during sleep
+
+---
 
 ## License
 
