@@ -116,18 +116,24 @@ Three layers working together:
 
 ## Technology
 
-- Python 3.11, FastAPI, Pydantic
-- sentence-transformers (local embeddings)
-- FAISS (vector search, CPU-only)
-- Docker (one-command deploy)
+- **Python 3.11** - Core language
+- **FastAPI + Pydantic** - REST API with validation
+- **sentence-transformers** - Local embeddings (all-MiniLM-L6-v2)
+- **FAISS** - Vector search (CPU-only)
+- **Docker** - One-command deployment
+
+**Note:** Inspired by Butterfly RSI's concepts (drift detection, dream consolidation), but built from scratch with our own implementation.
 
 ---
 
 ## Built Upon
 
-- [Butterfly RSI](https://github.com/ButterflyRSI/Butterfly-RSI) - Drift detection & dream consolidation
+**Concepts inspired by:**
+- [Butterfly RSI](https://github.com/ButterflyRSI/Butterfly-RSI) - Drift detection & dream consolidation concepts
 - ICLR 2026 Workshop - Recursive self-improvement research
 - Neuroscience - Memory consolidation during sleep
+
+**Implementation:** Built from scratch with our own architecture and code.
 
 ---
 
