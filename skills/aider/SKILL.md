@@ -178,9 +178,11 @@ docker restart engram          # Restart
 ## Quality Rules
 
 **Simple scale:**
-- 1-6: Single source, unverified, social media
-- 7: One good source OR two weak
+- 1-6: Single source, unverified, social media (opinions)
+- 7: One good source OR verified expert stating facts
 - 8+: TWO+ independent sources, verified
+
+**Expert exception:** Verified expert on-topic stating facts = 7 (single source OK)
 
 **Before rating 8+:** Check 2+ sources. Don't inflate.
 

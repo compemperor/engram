@@ -64,9 +64,11 @@ How to integrate Engram with AI agents (Claude Code, OpenCode, LangChain, etc.)
 ### Quality Rating Standards
 
 **Simple rules:**
-- **1-6:** Single source, unverified, social media
-- **7:** One good source OR two weak sources
+- **1-6:** Single source, unverified, social media (opinions/rumors)
+- **7:** One good source OR verified expert stating facts (on-topic)
 - **8+:** TWO+ independent sources, verified
+
+**Expert exception:** Verified expert in their field stating facts = quality 7 (single source acceptable)
 
 **Before rating 8+:**
 - Check 2+ independent sources

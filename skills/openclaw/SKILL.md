@@ -36,8 +36,8 @@ Start Session → Add Notes (quality rating) → Verify Understanding
 ## ⚠️ Quality Rules (KEEP IT SIMPLE!)
 
 **Rating Scale:**
-- **1-6:** Single source, unverified, social media
-- **7:** One good source OR two weak sources
+- **1-6:** Single source, unverified, social media (opinions/rumors)
+- **7:** One good source OR verified expert stating facts
 - **8+:** TWO+ independent sources, verified
 
 **BEFORE rating 8+:**
@@ -45,7 +45,10 @@ Start Session → Add Notes (quality rating) → Verify Understanding
 - [ ] Is this verified fact, not speculation?
 - [ ] Am I being honest, or inflating to save?
 
-**Social media rule:** X/Twitter = MAX 6 (treat as tips, not facts)
+**Social media rules:**
+- Random users/opinions = MAX 6
+- **Verified experts on-topic stating facts = 7** (can trust single source)
+- Check: Is author expert in this field? Are they stating facts or opinions?
 
 **Deep dive:** Don't trust first result. Check multiple sources. Verify claims.
 
