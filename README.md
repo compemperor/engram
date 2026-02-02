@@ -122,8 +122,6 @@ Three layers working together:
 - **FAISS** - Vector search (CPU-only)
 - **Docker** - One-command deployment
 
-**Note:** Inspired by Butterfly RSI's concepts (drift detection, dream consolidation), but built from scratch with our own implementation.
-
 ---
 
 ## Inspired By
