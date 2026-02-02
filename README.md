@@ -32,6 +32,8 @@ docker run -d -p 8765:8765 -v ./memories:/data/memories ghcr.io/compemperor/engr
 ### Local
 
 ```bash
+git clone https://github.com/compemperor/engram.git
+cd engram
 pip install -r requirements.txt
 python -m engram
 ```

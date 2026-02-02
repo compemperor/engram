@@ -93,9 +93,10 @@ curl -X POST http://localhost:8765/learning/session/20260202-203000/consolidate
 ### Installation
 
 ```bash
-pip install engram
-# Or from source
-cd engram && pip install -e .
+# Clone and install dependencies
+git clone https://github.com/compemperor/engram.git
+cd engram
+pip install -r requirements.txt
 ```
 
 ### Usage

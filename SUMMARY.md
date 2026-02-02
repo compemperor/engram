@@ -179,7 +179,7 @@ curl localhost:8765/health
 
 **Deployment:**
 - Docker + docker-compose
-- setuptools (pip install)
+- Direct git clone
 
 **Size:** ~400MB Docker image (CPU-only, no CUDA bloat)
 
@@ -213,7 +213,6 @@ engram/
 ├── Dockerfile                # Production container
 ├── docker-compose.yml        # One-command deploy
 ├── requirements.txt          # Dependencies
-├── setup.py                  # Pip installation
 ├── .gitignore                # Python + Docker
 ├── LICENSE                   # Apache 2.0
 ├── README.md                 # Full documentation
@@ -395,7 +394,7 @@ docker push compemperor/engram:latest
 ---
 
 **Status:** ✅ Production Ready  
-**Ready for:** GitHub publish, Docker Hub, PyPI, community  
+**Ready for:** GitHub publish, Docker distribution, community  
 
 🦀 **Built with care in one focused session!**
 
