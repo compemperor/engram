@@ -69,7 +69,7 @@ python -m engram.api
 - **Trading Bots** - Remember lessons, prevent repeating mistakes
 - **Chatbots** - Maintain context and personality across sessions
 
-## Inspired By
+## Built Upon
 
 - [Butterfly RSI](https://github.com/ButterflyRSI/Butterfly-RSI) - Drift detection & dream consolidation
 - ICLR 2026 Workshop - Recursive self-improvement research
@@ -78,9 +78,3 @@ python -m engram.api
 ## License
 
 Apache 2.0
-
----
-
-**Status:** 🚧 In Development  
-**Author:** compemperor, Clawdy  
-**Built:** 2026-02-02

@@ -252,12 +252,11 @@ engram/
 
 ---
 
-## Inspiration
+## Built Upon
 
 - **Butterfly RSI** - Drift detection & dream consolidation
 - **ICLR 2026 Workshop** - Recursive self-improvement research  
 - **Neuroscience** - Memory consolidation during sleep
-- **Our experience** - Learning from OVZON trading mistake, clawdy-memory development
 
 ---
 
