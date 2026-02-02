@@ -10,6 +10,27 @@ Self-improving memory system with quality control, drift detection, and learning
 
 ---
 
+## Why Engram?
+
+**The Problem:** Current AI memory systems accumulate everything without filtering. Over time, they fill with noise, lose coherence, and can't distinguish valuable insights from garbage.
+
+**What goes wrong:**
+- ❌ **No quality control** - Garbage in = garbage retained forever
+- ❌ **No drift detection** - System doesn't know when it's losing coherence
+- ❌ **No consolidation** - Can't store everything, but also can't decide what to keep
+- ❌ **Result:** Memory systems that get worse over time, not better
+
+**Engram's Solution:**
+
+✅ **Quality gates** - Only store verified, high-quality learnings  
+✅ **Drift detection** - Monitors when memory patterns diverge from goals  
+✅ **Dream consolidation** - Like human sleep, replays and strengthens valuable memories while filtering noise  
+✅ **Self-correction** - Automatically adjusts when detecting issues  
+
+**Result:** Memory that improves over time, not degrades.
+
+---
+
 ## Features
 
 🔒 **Privacy-First** - Local embeddings, no data leaves your machine  
