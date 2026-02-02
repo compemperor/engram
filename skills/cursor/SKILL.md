@@ -2,6 +2,36 @@
 
 Memory system for Cursor IDE.
 
+## Learning Flow 🧠
+
+**Traditional problem:** Code, learn something, forget it next week.
+
+**Engram solution:** Structured learning with quality gates.
+
+**The Cycle:**
+```
+Code Session → Discoveries → Rate Quality (1-10) → Self-Verify (1-5)
+→ Consolidation → Permanent Memory (if quality >= 8)
+```
+
+**Why quality thresholds?**
+- Not every observation is worth remembering
+- Quality >= 8 means "I'd teach this to someone else"
+- Understanding >= 4 means "I can apply this right now"
+
+**Why verification?**
+- Prevents false confidence
+- Identifies what you actually need to review
+- Like explaining code in a PR review - if you can't explain it clearly, you don't fully get it
+
+**Perfect for:**
+- Deep debugging sessions
+- Learning new patterns
+- Architecture decisions
+- Performance optimization insights
+
+---
+
 ## Setup
 
 ```bash

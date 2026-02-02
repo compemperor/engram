@@ -2,6 +2,39 @@
 
 Memory system for Claude Code projects.
 
+## Understanding Learning Sessions 🧠
+
+**The Challenge:** AI agents learn during sessions but have no long-term memory between sessions.
+
+**Engram's Solution:** Structured learning with quality control.
+
+**How it works:**
+
+1. **Session Start** - Define what you're learning about
+2. **Progressive Notes** - Log observations with quality ratings (1-10)
+   - 1-5: Low quality (scratch notes)
+   - 6-7: Medium quality (useful reference)
+   - 8-10: High quality (teach-worthy insights)
+3. **Verification Checkpoints** - Self-assess understanding (1-5 scale)
+   - 1-2: Confused, need to revisit
+   - 3: Grasping it, but not confident
+   - 4-5: Understand and can apply
+4. **Consolidation** - Notes with quality >= 8 automatically become permanent memories
+
+**Why this works for AI agents:**
+- **Quality gates** prevent memory pollution (only keep the best)
+- **Verification** forces articulation (the Feynman test)
+- **Auto-save threshold** (>= 8) ensures high signal-to-noise ratio
+- **Permanent storage** survives session restarts
+
+**Use cases:**
+- Multi-file refactoring (track decisions)
+- Learning codebases (capture architecture insights)
+- Debugging complex issues (remember what worked)
+- API design (consolidate best practices)
+
+---
+
 ## Setup
 
 ```bash

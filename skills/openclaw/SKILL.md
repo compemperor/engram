@@ -2,6 +2,37 @@
 
 Self-improving memory system with quality control, drift detection, and learning framework.
 
+## Learning Philosophy 🧠
+
+**The Problem:** Just storing everything creates noise. You need structure to learn effectively.
+
+**Engram's Approach:**
+1. **Exploration** - Gather information, take notes
+2. **Quality Assessment** - Rate what you learned (1-10)
+3. **Verification** - Self-check: Do I actually understand this? (1-5 scale)
+4. **Consolidation** - Keep only high-quality learnings (quality >= 8)
+
+**Why Verification Matters:**
+- Forces you to articulate understanding
+- Identifies gaps before moving on
+- Like the Feynman Technique - if you can't explain it, you don't know it
+
+**Why Quality Thresholds:**
+- Quality < 8: Useful notes but not permanent memory
+- Quality >= 8: High-quality insight → auto-saved to permanent memory
+- Understanding < 3: Need to study more
+- Understanding >= 4: Ready to apply
+
+**The Flow:**
+```
+Start Session → Add Notes (quality rating) → Verify Understanding
+→ Consolidate (quality >= 8 becomes permanent memory)
+```
+
+**Result:** Only verified, high-quality learnings persist. No noise.
+
+---
+
 ## Quick Reference
 
 **API endpoint:** http://localhost:8765  

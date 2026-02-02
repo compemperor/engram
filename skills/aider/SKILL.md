@@ -2,6 +2,32 @@
 
 Use Engram memory in Aider sessions.
 
+## Why Learning Sessions? 🧠
+
+**During coding:** You learn patterns, make mistakes, discover solutions.
+
+**Without structure:** These insights get lost or diluted.
+
+**With Engram sessions:**
+1. **Start** - Begin a focused learning session on a topic
+2. **Note** - Log what you learn (rate quality 1-10)
+3. **Verify** - Self-check: Can I explain this? What would I do differently?
+4. **Consolidate** - High-quality notes (>= 8) become permanent memories
+
+**Why it works:**
+- Quality threshold filters noise (only keep the good stuff)
+- Verification forces you to articulate understanding
+- Sessions give structure to organic learning
+- Perfect for refactoring sprints, debugging marathons, learning new libraries
+
+**When to use:**
+- Refactoring a complex module
+- Learning a new framework
+- Debugging a challenging issue
+- Code review insights
+
+---
+
 ## Setup
 
 ```bash

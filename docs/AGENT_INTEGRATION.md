@@ -4,6 +4,65 @@ How to integrate Engram with AI agents (Claude Code, OpenCode, LangChain, etc.)
 
 ---
 
+## Learning Philosophy
+
+**Why Engram exists:** AI agents need long-term memory, but storing everything creates noise.
+
+**The Solution:** Structured learning with quality control.
+
+### The Learning Cycle
+
+```
+1. Exploration → 2. Quality Assessment → 3. Verification → 4. Consolidation
+```
+
+**1. Exploration**
+- Gather information during a task
+- Take progressive notes
+- Rate source quality (1-10)
+
+**2. Quality Assessment**
+- Not all observations are worth remembering
+- Quality 1-7: Useful during session, but disposable
+- Quality 8-10: High-quality insights worth keeping
+
+**3. Verification**
+- Self-check: Do I actually understand this?
+- Rate understanding (1-5 scale)
+- Identify gaps and applications
+- Like the Feynman Technique: if you can't explain it simply, you don't understand it
+
+**4. Consolidation**
+- High-quality notes (quality >= 8) automatically become permanent memories
+- Low-quality notes are discarded
+- Only verified, teach-worthy knowledge persists
+
+### Why This Works for AI Agents
+
+**Problem:** Session-based AI has no memory between restarts.
+
+**Solution:** Structured storage with quality gates.
+
+**Benefits:**
+- **Signal over noise** - Only high-quality learnings persist
+- **Self-verification** - Forces articulation (prevents false confidence)
+- **Automatic filtering** - Quality >= 8 threshold handles curation
+- **Context survival** - Important insights survive session restarts
+
+**When to use learning sessions:**
+- Deep debugging sessions
+- Learning new codebases/frameworks
+- Complex refactoring
+- Architecture decisions
+- Research/exploration tasks
+
+**When to use direct memory storage:**
+- Quick facts
+- Simple reminders
+- Already-verified knowledge
+
+---
+
 ## Overview
 
 Engram provides three integration methods:
