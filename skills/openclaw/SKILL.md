@@ -1,55 +1,245 @@
-# Engram - OpenClaw Integration
+# Engram - Local Memory & Learning System
 
-Memory system for OpenClaw agents.
+Self-improving memory system with quality control, drift detection, and learning framework.
 
-## Quick Start
+## Quick Reference
 
-```bash
-# Start Engram server
-docker run -d -p 8765:8765 -v ~/.openclaw/workspace/memory:/data/memories ghcr.io/compemperor/engram:latest
-```
+**API endpoint:** http://localhost:8765  
+**Container:** engram (auto-restart)  
+**Memory path:** ~/.openclaw/workspace/memory/
 
-## Usage
+## Core Functions
 
+### Store a Lesson
 ```python
 import requests
 
-ENGRAM = "http://localhost:8765"
-
-# Store lesson
 def remember(topic: str, lesson: str, quality: int = 8):
-    requests.post(f"{ENGRAM}/memory/add", json={
+    """Store a lesson in Engram"""
+    r = requests.post("http://localhost:8765/memory/add", json={
         "topic": topic,
         "lesson": lesson,
-        "source_quality": quality
+        "source_quality": quality,
+        "understanding": 4.0  # 1-5 scale
     })
+    return r.json()
 
-# Search memories
-def recall(query: str, min_quality: int = 7):
-    r = requests.post(f"{ENGRAM}/memory/search", json={
-        "query": query,
-        "top_k": 5,
-        "min_quality": min_quality
-    })
-    return [hit["memory"]["lesson"] for hit in r.json()["results"]]
-
-# Get all for topic
-def get_topic(topic: str):
-    r = requests.get(f"{ENGRAM}/memory/recall/{topic}")
-    return [m["lesson"] for m in r.json()["memories"]]
+# Example
+remember("trading", "Don't chase missed trades emotionally", quality=9)
 ```
 
-## Example
-
+### Search Memories
 ```python
-# After completing a task
-remember("trading", "Don't chase missed trades", quality=9)
+def recall(query: str, min_quality: int = 7, top_k: int = 5):
+    """Search memories semantically"""
+    r = requests.post("http://localhost:8765/memory/search", json={
+        "query": query,
+        "top_k": top_k,
+        "min_quality": min_quality
+    })
+    results = r.json()["results"]
+    return [hit["memory"]["lesson"] for hit in results]
 
-# Before starting similar task
+# Example
 lessons = recall("trading mistakes")
-print("Relevant lessons:", lessons)
+```
+
+### Get All for Topic
+```python
+def get_topic(topic: str):
+    """Get all memories for a specific topic"""
+    r = requests.get(f"http://localhost:8765/memory/recall/{topic}")
+    return [m["lesson"] for m in r.json()["memories"]]
+
+# Example
+trading_lessons = get_topic("trading")
+```
+
+### Evaluate Quality
+```python
+def evaluate(text: str):
+    """Evaluate quality of text before storing"""
+    r = requests.post("http://localhost:8765/mirror/evaluate", json={
+        "text": text
+    })
+    result = r.json()
+    return result["quality"], result["should_store"]
+
+# Example
+quality, should_store = evaluate("This is a test lesson")
+if should_store:
+    remember("testing", "This is a test lesson", quality=int(quality * 10))
+```
+
+## Learning Sessions
+
+### Start a Learning Session
+```python
+def start_learning(topic: str, duration_min: int = 30):
+    """Start a structured learning session"""
+    r = requests.post(
+        f"http://localhost:8765/learning/session/start?topic={topic}&duration_min={duration_min}"
+    )
+    return r.json()["session_id"]
+
+# Example
+session_id = start_learning("market-intel", duration_min=15)
+```
+
+### Add Learning Notes
+```python
+def log_note(session_id: str, content: str, source_quality: int = 7, source_url: str = None):
+    """Log a learning note (quality >= 8 auto-saved to memory)"""
+    r = requests.post(
+        f"http://localhost:8765/learning/session/{session_id}/note",
+        json={
+            "content": content,
+            "source_quality": source_quality,  # 1-10 (>= 8 becomes insight)
+            "source_url": source_url  # optional
+        }
+    )
+    return r.json()
+
+# Example
+log_note(session_id, "Found OVZON mentioned in 5 defense tweets", source_quality=8)
+log_note(session_id, "Risk management beats prediction accuracy", source_quality=9)
+```
+
+### Verify Understanding
+```python
+def verify_learning(session_id: str, topic: str, understanding: float, applications: list = None):
+    """Add verification checkpoint"""
+    r = requests.post(
+        f"http://localhost:8765/learning/session/{session_id}/verify",
+        json={
+            "topic": topic,
+            "understanding": understanding,  # 1-5
+            "sources_verified": True,
+            "applications": applications or []
+        }
+    )
+    return r.json()
+
+# Example
+verify_learning(session_id, "market-analysis", 4.5, 
+    applications=["Apply sentiment to trading decisions", "Use LSTM for prediction"])
+```
+
+### Consolidate Session
+```python
+def consolidate_session(session_id: str):
+    """Complete and consolidate learning session"""
+    r = requests.post(f"http://localhost:8765/learning/session/{session_id}/consolidate")
+    result = r.json()
+    return result
+
+# Example
+summary = consolidate_session(session_id)
+print(f"Notes: {summary['summary']['notes_count']}")
+print(f"Understanding: {summary['summary']['average_understanding']}")
+print(f"Saved to memory: {summary['saved_to_memory']}")
+```
+
+## Workflow
+
+**Before a task:**
+```python
+# 1. Recall relevant lessons
+lessons = recall("task context")
+for lesson in lessons:
+    print(f"Remember: {lesson}")
+```
+
+**During work:**
+```python
+# 2. Start learning session
+session_id = start_learning("topic", "what you're trying to learn")
+
+# 3. Log observations and insights
+log_learning(session_id, "observation", "Found X...", 3.0)
+log_learning(session_id, "insight", "This means Y...", 4.0)
+```
+
+**After completion:**
+```python
+# 4. Complete session (auto-consolidates)
+summary = finish_learning(session_id)
+
+# 5. Store high-quality lessons
+if summary["avg_understanding"] >= 3.0:
+    remember("topic", "Key lesson learned", quality=8)
+```
+
+## Integration with Tasks
+
+### Trading Intel Sweep
+```python
+# Before sweep
+past_mistakes = recall("trading mistakes")
+market_insights = recall("market analysis")
+
+# During sweep
+session_id = start_learning("market-intel", "Find best swing trade opportunities")
+# ... do research ...
+log_learning(session_id, "observation", "OVZON up 5% on news X", 3.5)
+
+# After sweep
+summary = finish_learning(session_id)
+if found_opportunity:
+    remember("market-intel", f"OVZON catalyst: {reason}", quality=8)
+```
+
+### X/Twitter Learning
+```python
+# Start learning session
+session_id = start_learning("X", "AI trends and news")
+
+# Search and learn
+tweets = search_x("AI agents")
+for tweet in tweets:
+    quality, should_store = evaluate(tweet)
+    if should_store:
+        log_learning(session_id, "observation", tweet, quality)
+
+# Complete and consolidate
+summary = finish_learning(session_id)
+```
+
+## Health Check
+```bash
+curl http://localhost:8765/health
+# {"status":"healthy","memory_enabled":true}
+```
+
+## Stats
+```bash
+curl http://localhost:8765/memory/stats
+# {"total_memories":42,"topics":["trading","X","AI"],...}
 ```
 
 ## API Docs
-
 http://localhost:8765/docs
+
+## Notes
+
+- **Quality threshold:** Store only 7+ quality lessons
+- **Understanding scale:** 1=confused, 3=grasp, 5=mastery
+- **Semantic search:** Uses embeddings, finds related concepts
+- **Auto-consolidation:** Learning sessions auto-filter and strengthen memories
+- **Drift detection:** Monitors memory coherence over time
+
+## Container Management
+
+```bash
+# Check status
+docker ps | grep engram
+
+# View logs
+docker logs engram -f
+
+# Restart
+docker restart engram
+
+# Stop
+docker stop engram
+```

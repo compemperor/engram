@@ -58,7 +58,7 @@ class VerificationRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system",
-    version="0.1.0"
+    version="0.1.2"
 )
 
 # Global state (initialized on startup)
@@ -89,7 +89,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.1.0",
+        "version": "0.1.2",
         "description": "Memory traces for AI agents",
         "docs": "/docs",
         "health": "/health"

@@ -148,10 +148,19 @@ class LearningSession:
         """
         Consolidate session and generate summary.
         
+        Converts high-quality notes to insights automatically.
+        
         Returns:
             Dict with session summary and metrics
         """
         duration = (datetime.now() - self.start_time).total_seconds() / 60
+        
+        # Auto-convert high-quality notes to insights
+        for note in self.notes:
+            if note.source_quality and note.source_quality >= 8:
+                # High-quality note becomes an insight
+                if note.content not in self.insights:
+                    self.insights.append(note.content)
         
         # Calculate quality metrics
         verified_sources = sum(1 for note in self.notes if note.source_quality and note.source_quality >= 7)
