@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  engram:
+    build: .
+    container_name: engram
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./memories:/data/memories
+    environment:
+      - MEMORY_PATH=/data/memories
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8765/health')"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s

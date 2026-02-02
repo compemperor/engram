@@ -1,0 +1,415 @@
+"""
+Engram FastAPI Server - REST API for memory, learning, and quality evaluation
+
+Provides professional REST endpoints for all Engram functionality.
+"""
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
+import uvicorn
+
+from engram.memory.store import MemoryStore, SearchResult
+from engram.mirror.evaluator import MirrorEvaluator
+from engram.mirror.drift import DriftDetector
+from engram.learning.session import LearningSession
+
+
+# Pydantic models for request/response validation
+
+class AddLessonRequest(BaseModel):
+    topic: str = Field(..., description="Topic category")
+    lesson: str = Field(..., description="The lesson/memory content")
+    source_quality: Optional[int] = Field(None, ge=1, le=10, description="Source quality (1-10)")
+    understanding: Optional[float] = Field(None, ge=1.0, le=5.0, description="Understanding score (1-5)")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+
+
+class SearchRequest(BaseModel):
+    query: str = Field(..., description="Search query")
+    top_k: int = Field(5, ge=1, le=50, description="Number of results")
+    min_quality: Optional[int] = Field(None, ge=1, le=10, description="Minimum quality filter")
+    topic_filter: Optional[str] = Field(None, description="Filter by specific topic")
+
+
+class EvaluateSessionRequest(BaseModel):
+    sources_verified: bool = Field(..., description="Were sources verified?")
+    understanding_ratings: List[float] = Field(..., description="Understanding scores (1-5) per topic")
+    topics: List[str] = Field(..., description="Topics covered")
+    notes: Optional[str] = Field(None, description="Evaluation notes")
+
+
+class LearningNoteRequest(BaseModel):
+    content: str = Field(..., description="Note content")
+    source_url: Optional[str] = Field(None, description="Source URL")
+    source_quality: Optional[int] = Field(None, ge=1, le=10, description="Source quality (1-10)")
+
+
+class VerificationRequest(BaseModel):
+    topic: str = Field(..., description="Topic to verify")
+    understanding: float = Field(..., ge=1.0, le=5.0, description="Understanding (1-5)")
+    sources_verified: bool = Field(False, description="Sources verified?")
+    gaps: Optional[List[str]] = Field(None, description="What's unclear")
+    applications: Optional[List[str]] = Field(None, description="How to apply")
+
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="Engram API",
+    description="Memory traces for AI agents - Self-improving memory system",
+    version="0.1.0"
+)
+
+# Global state (initialized on startup)
+memory_store: Optional[MemoryStore] = None
+mirror_evaluator: Optional[MirrorEvaluator] = None
+drift_detector: Optional[DriftDetector] = None
+active_sessions: Dict[str, LearningSession] = {}
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize Engram components on startup"""
+    global memory_store, mirror_evaluator, drift_detector
+    
+    memory_store = MemoryStore(path="./memories")
+    mirror_evaluator = MirrorEvaluator(path="./memories")
+    drift_detector = DriftDetector(path="./memories")
+    
+    print("✓ Engram API started")
+    print(f"  Memory: {memory_store.get_stats()['total_memories']} memories")
+    print(f"  FAISS: {'enabled' if memory_store.enable_faiss else 'disabled'}")
+
+
+# Health & Info Endpoints
+
+@app.get("/")
+async def root():
+    """API root - returns basic info"""
+    return {
+        "service": "Engram API",
+        "version": "0.1.0",
+        "description": "Memory traces for AI agents",
+        "docs": "/docs",
+        "health": "/health"
+    }
+
+
+@app.get("/health")
+async def health():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "memory_enabled": memory_store is not None,
+        "mirror_enabled": mirror_evaluator is not None,
+        "timestamp": memory_store.metadata.get("last_updated") if memory_store else None
+    }
+
+
+# Memory Endpoints
+
+@app.post("/memory/add")
+async def add_lesson(request: AddLessonRequest):
+    """Add a new lesson/memory"""
+    try:
+        memory = memory_store.add_lesson(
+            topic=request.topic,
+            lesson=request.lesson,
+            source_quality=request.source_quality,
+            understanding=request.understanding,
+            metadata=request.metadata
+        )
+        
+        return {
+            "status": "success",
+            "memory": memory.to_dict()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/memory/search")
+async def search_memory(request: SearchRequest):
+    """Semantic search across memories"""
+    try:
+        results = memory_store.search(
+            query=request.query,
+            top_k=request.top_k,
+            min_quality=request.min_quality,
+            topic_filter=request.topic_filter
+        )
+        
+        return {
+            "query": request.query,
+            "count": len(results),
+            "results": [
+                {
+                    "memory": r.memory.to_dict(),
+                    "score": r.score
+                }
+                for r in results
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/memory/recall/{topic}")
+async def recall_topic(topic: str, min_quality: Optional[int] = None):
+    """Recall all memories for a specific topic"""
+    try:
+        memories = memory_store.recall(topic=topic, min_quality=min_quality)
+        
+        return {
+            "topic": topic,
+            "count": len(memories),
+            "memories": [m.to_dict() for m in memories]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/memory/stats")
+async def memory_stats():
+    """Get memory statistics"""
+    try:
+        stats = memory_store.get_stats()
+        return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/memory/rebuild-index")
+async def rebuild_index():
+    """Rebuild FAISS index from scratch"""
+    try:
+        if not memory_store.enable_faiss:
+            raise HTTPException(status_code=400, detail="FAISS not enabled")
+        
+        memory_store.rebuild_index()
+        
+        return {
+            "status": "success",
+            "message": "Index rebuilt successfully"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Mirror (Quality) Endpoints
+
+@app.post("/mirror/evaluate")
+async def evaluate_session(request: EvaluateSessionRequest):
+    """Evaluate a learning session quality"""
+    try:
+        evaluation = mirror_evaluator.evaluate_session(
+            sources_verified=request.sources_verified,
+            understanding_ratings=request.understanding_ratings,
+            topics=request.topics,
+            notes=request.notes
+        )
+        
+        return {
+            "status": "success",
+            "evaluation": evaluation.to_dict()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/mirror/drift")
+async def check_drift(window: int = 10):
+    """Check for drift in recent sessions"""
+    try:
+        alerts = drift_detector.check_drift(window=window)
+        stability = drift_detector.get_stability_score(window=window)
+        
+        return {
+            "stability_score": stability,
+            "alerts": [
+                {
+                    "severity": a.severity,
+                    "category": a.category,
+                    "message": a.message,
+                    "metric": a.metric,
+                    "threshold": a.threshold
+                }
+                for a in alerts
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/mirror/metrics")
+async def mirror_metrics():
+    """Get current mirror metrics"""
+    try:
+        drift_metrics = mirror_evaluator.get_drift_metrics()
+        quality_trends = mirror_evaluator.get_quality_trends(last_n=10)
+        
+        return {
+            "drift": drift_metrics,
+            "quality": quality_trends
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Learning Session Endpoints
+
+@app.post("/learning/session/start")
+async def start_session(
+    topic: str,
+    duration_min: int = 30,
+    session_id: Optional[str] = None
+):
+    """Start a new learning session"""
+    try:
+        if session_id is None:
+            from datetime import datetime
+            session_id = datetime.now().strftime("%Y%m%d-%H%M%S")
+        
+        if session_id in active_sessions:
+            raise HTTPException(status_code=400, detail="Session already exists")
+        
+        session = LearningSession(
+            topic=topic,
+            duration_min=duration_min,
+            output_dir="./memories/learning-sessions",
+            enable_verification=True
+        )
+        
+        active_sessions[session_id] = session
+        
+        return {
+            "status": "success",
+            "session_id": session_id,
+            "topic": topic,
+            "duration_min": duration_min
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/learning/session/{session_id}/note")
+async def add_session_note(session_id: str, request: LearningNoteRequest):
+    """Add a note to learning session"""
+    if session_id not in active_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    try:
+        session = active_sessions[session_id]
+        session.add_note(
+            content=request.content,
+            source_url=request.source_url,
+            source_quality=request.source_quality
+        )
+        
+        return {
+            "status": "success",
+            "notes_count": len(session.notes)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/learning/session/{session_id}/verify")
+async def verify_session(session_id: str, request: VerificationRequest):
+    """Add verification checkpoint to session"""
+    if session_id not in active_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    try:
+        session = active_sessions[session_id]
+        checkpoint = session.verify(
+            topic=request.topic,
+            understanding=request.understanding,
+            sources_verified=request.sources_verified,
+            gaps=request.gaps,
+            applications=request.applications
+        )
+        
+        return {
+            "status": "success",
+            "checkpoint": {
+                "topic": checkpoint.topic,
+                "understanding": checkpoint.understanding,
+                "sources_verified": checkpoint.sources_verified
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/learning/session/{session_id}/consolidate")
+async def consolidate_session(session_id: str):
+    """Consolidate and finalize learning session"""
+    if session_id not in active_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    try:
+        session = active_sessions[session_id]
+        summary = session.consolidate()
+        
+        # Evaluate with mirror
+        evaluation = mirror_evaluator.evaluate_session(
+            sources_verified=session.all_sources_verified(),
+            understanding_ratings=session.get_understanding_ratings(),
+            topics=session.get_topics_covered()
+        )
+        
+        # Save quality insights if consolidation recommended
+        if evaluation.consolidate:
+            for insight in session.insights:
+                memory_store.add_lesson(
+                    topic=session.topic,
+                    lesson=insight,
+                    source_quality=int(evaluation.source_quality),
+                    understanding=evaluation.understanding
+                )
+        
+        # Clean up
+        del active_sessions[session_id]
+        
+        return {
+            "status": "success",
+            "summary": summary,
+            "evaluation": evaluation.to_dict(),
+            "saved_to_memory": evaluation.consolidate
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/learning/sessions")
+async def list_sessions():
+    """List active learning sessions"""
+    return {
+        "count": len(active_sessions),
+        "sessions": [
+            {
+                "session_id": sid,
+                "topic": session.topic,
+                "notes_count": len(session.notes),
+                "checkpoints_count": len(session.checkpoints)
+            }
+            for sid, session in active_sessions.items()
+        ]
+    }
+
+
+# Main entry point
+def main(host: str = "0.0.0.0", port: int = 8765, reload: bool = False):
+    """Run Engram API server"""
+    uvicorn.run(
+        "engram.api:app",
+        host=host,
+        port=port,
+        reload=reload
+    )
+
+
+if __name__ == "__main__":
+    main()
