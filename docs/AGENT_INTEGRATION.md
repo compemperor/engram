@@ -22,7 +22,7 @@ Engram provides three integration methods:
 
 ```bash
 # Docker (recommended)
-docker run -d -p 8765:8765 -v ./memories:/data/memories compemperor/engram
+docker run -d -p 8765:8765 -v ./memories:/data/memories ghcr.io/compemperor/engram:latest
 
 # Or local
 python -m engram

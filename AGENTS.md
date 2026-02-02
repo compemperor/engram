@@ -8,7 +8,7 @@ Quick integration guide for AI agents (Claude Code, Cursor, Aider, etc.)
 
 ```bash
 # Start Engram server
-docker run -d -p 8765:8765 -v ./memories:/data/memories compemperor/engram
+docker run -d -p 8765:8765 -v ./memories:/data/memories ghcr.io/compemperor/engram:latest
 ```
 
 **API:** http://localhost:8765  

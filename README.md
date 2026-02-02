@@ -26,7 +26,7 @@ Self-improving memory system with quality control, drift detection, and learning
 ### Docker (Recommended)
 
 ```bash
-docker run -d -p 8765:8765 -v ./memories:/data/memories compemperor/engram:latest
+docker run -d -p 8765:8765 -v ./memories:/data/memories ghcr.io/compemperor/engram:latest
 ```
 
 ### Local
