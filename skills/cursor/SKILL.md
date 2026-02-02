@@ -137,3 +137,53 @@ python engram_helper.py recall "debugging techniques"
 Add to your Cursor Composer context:
 
 > Before each coding task, query Engram for relevant lessons: `curl http://localhost:8765/memory/search -d '{"query":"current task description"}'`
+
+## Workflow
+
+**Before task:**
+```python
+# Check for relevant lessons
+lessons = recall("debugging techniques")
+```
+
+**During work:**
+```python
+# Track discoveries
+session_id = start_session("debugging")
+log_note(session_id, "Found null pointer issue", quality=9)
+```
+
+**After task:**
+```python
+# Consolidate learnings
+summary = finish_session(session_id)
+```
+
+## Health & Stats
+
+```bash
+# Health check
+curl http://localhost:8765/health
+
+# View stats
+curl http://localhost:8765/memory/stats
+```
+
+## API Docs
+
+http://localhost:8765/docs
+
+## Notes
+
+- Quality >= 8: Auto-saved to permanent memory
+- Understanding 1-5 scale: 1=confused, 5=mastery
+- Semantic search finds related concepts
+- Sessions auto-consolidate insights
+
+## Container Management
+
+```bash
+docker ps | grep engram        # Status
+docker logs engram -f          # Logs
+docker restart engram          # Restart
+```

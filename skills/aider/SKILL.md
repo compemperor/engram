@@ -122,3 +122,53 @@ Before similar work:
 ```python
 lessons = get_lessons("python type safety")
 ```
+
+## Workflow
+
+**Before coding:**
+```python
+# Recall relevant patterns
+lessons = get_lessons("refactoring patterns")
+```
+
+**During work:**
+```python
+# Track learning
+session_id = start_session("api-refactoring")
+log_note(session_id, "Separated concerns into layers", 9)
+```
+
+**After completion:**
+```python
+summary = finish_session(session_id)
+# High-quality notes auto-saved!
+```
+
+## Health & Stats
+
+```bash
+# Health check
+curl http://localhost:8765/health
+
+# View stats
+curl http://localhost:8765/memory/stats
+```
+
+## API Docs
+
+http://localhost:8765/docs
+
+## Notes
+
+- Quality >= 8: Auto-saved to permanent memory
+- Understanding 1-5 scale: 1=confused, 5=mastery
+- Semantic search finds related concepts
+- Sessions auto-consolidate insights
+
+## Container Management
+
+```bash
+docker ps | grep engram        # Status
+docker logs engram -f          # Logs
+docker restart engram          # Restart
+```
