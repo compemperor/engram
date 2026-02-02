@@ -81,11 +81,64 @@ print("Relevant techniques:", lessons)
 api_patterns = engram.get_topic("fastapi")
 ```
 
+## Learning Sessions
+
+For structured deep learning:
+
+```python
+class EngramClient:
+    # ... (previous methods) ...
+    
+    def start_session(self, topic: str, duration_min: int = 30):
+        """Start a learning session"""
+        response = requests.post(
+            f"{self.api}/learning/session/start",
+            params={"topic": topic, "duration_min": duration_min}
+        )
+        return response.json()["session_id"]
+    
+    def log_note(self, session_id: str, content: str, quality: int = 8):
+        """Log a learning note (quality >= 8 auto-saves to memory)"""
+        response = requests.post(
+            f"{self.api}/learning/session/{session_id}/note",
+            json={"content": content, "source_quality": quality}
+        )
+        return response.json()
+    
+    def verify_understanding(self, session_id: str, topic: str, understanding: float, applications: list):
+        """Add verification checkpoint"""
+        response = requests.post(
+            f"{self.api}/learning/session/{session_id}/verify",
+            json={
+                "topic": topic,
+                "understanding": understanding,
+                "sources_verified": True,
+                "applications": applications
+            }
+        )
+        return response.json()
+    
+    def consolidate_session(self, session_id: str):
+        """Consolidate and save high-quality insights"""
+        response = requests.post(
+            f"{self.api}/learning/session/{session_id}/consolidate"
+        )
+        return response.json()
+
+# Usage
+session_id = engram.start_session("api-design", duration_min=20)
+engram.log_note(session_id, "REST endpoints should be noun-based", quality=9)
+engram.log_note(session_id, "Use HTTP status codes correctly", quality=8)
+engram.verify_understanding(session_id, "api-design", 4.5, ["Apply to new endpoints"])
+summary = engram.consolidate_session(session_id)
+print(f"Saved {summary['summary']['insights_count']} insights")
+```
+
 ## Project Structure
 
 ```
 your-project/
-├── engram_client.py    # Memory client
+├── engram_client.py    # Memory client (with sessions!)
 ├── main.py             # Your code
 └── .env                # ENGRAM_API=http://localhost:8765
 ```

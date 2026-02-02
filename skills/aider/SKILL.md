@@ -58,7 +58,34 @@ def get_lessons(query: str):
     return [hit["memory"]["lesson"] for hit in r.json()["results"]]
 ```
 
-## Example
+## Learning Sessions
+
+For deep learning cycles:
+
+```python
+import requests
+
+def start_session(topic: str):
+    r = requests.post(f"http://localhost:8765/learning/session/start?topic={topic}&duration_min=30")
+    return r.json()["session_id"]
+
+def log_note(session_id: str, content: str, quality: int = 8):
+    requests.post(f"http://localhost:8765/learning/session/{session_id}/note", json={
+        "content": content,
+        "source_quality": quality  # >= 8 auto-saves to memory
+    })
+
+def finish_session(session_id: str):
+    return requests.post(f"http://localhost:8765/learning/session/{session_id}/consolidate").json()
+
+# Example
+session_id = start_session("refactoring-patterns")
+log_note(session_id, "Extract method refactoring reduces complexity", 9)
+log_note(session_id, "Single responsibility principle applies to functions", 8)
+summary = finish_session(session_id)
+```
+
+## Examples
 
 After refactoring:
 ```python

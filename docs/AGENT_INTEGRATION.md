@@ -80,9 +80,11 @@ curl -X POST http://localhost:8765/learning/session/20260202-203000/verify \
     "applications": ["Can optimize data processing scripts"]
   }'
 
-# Consolidate
+# Consolidate (notes with quality >= 8 auto-saved to memory)
 curl -X POST http://localhost:8765/learning/session/20260202-203000/consolidate
 ```
+
+**💡 Tip:** Notes with `source_quality >= 8` automatically become permanent memories during consolidation!
 
 ---
 

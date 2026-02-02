@@ -71,6 +71,25 @@ if __name__ == "__main__":
         recall(sys.argv[2])
 ```
 
+## Learning Sessions
+
+Add to engram_helper.py for deep learning:
+
+```python
+def start_session(topic: str):
+    r = requests.post(f"http://localhost:8765/learning/session/start?topic={topic}&duration_min=30")
+    return r.json()["session_id"]
+
+def log_note(session_id: str, content: str, quality: int = 8):
+    requests.post(f"http://localhost:8765/learning/session/{session_id}/note", json={
+        "content": content,
+        "source_quality": quality  # >= 8 auto-saves
+    })
+
+def finish_session(session_id: str):
+    return requests.post(f"http://localhost:8765/learning/session/{session_id}/consolidate").json()
+```
+
 ## Usage in Cursor
 
 After fixing a bug:
