@@ -126,14 +126,11 @@ Three layers working together:
 
 ---
 
-## Built Upon
+## Inspired By
 
-**Concepts inspired by:**
-- [Butterfly RSI](https://github.com/ButterflyRSI/Butterfly-RSI) - Drift detection & dream consolidation concepts
+- [Butterfly RSI](https://github.com/ButterflyRSI/Butterfly-RSI) - Drift detection & dream consolidation
 - ICLR 2026 Workshop - Recursive self-improvement research
 - Neuroscience - Memory consolidation during sleep
-
-**Implementation:** Built from scratch with our own architecture and code.
 
 ---
 
