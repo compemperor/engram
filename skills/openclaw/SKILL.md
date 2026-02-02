@@ -33,24 +33,23 @@ Start Session → Add Notes (quality rating) → Verify Understanding
 
 ---
 
-## ⚠️ Quality Rating Policy
+## ⚠️ Quality Rules (KEEP IT SIMPLE!)
 
-**MANDATORY:** Read `QUALITY_RATING_POLICY.md` in the Engram repo before rating sources!
+**Rating Scale:**
+- **1-6:** Single source, unverified, social media
+- **7:** One good source OR two weak sources
+- **8+:** TWO+ independent sources, verified
 
-**Key rules:**
-- Social media (X/Twitter) = MAX quality 6
-- Quality 8+ requires TWO independent sources (Two-Source Rule)
-- Use CRAAP test (Currency, Relevance, Authority, Accuracy, Purpose)
-- Primary sources > Secondary > Tertiary
-- Be conservative: when in doubt, rate lower
+**BEFORE rating 8+:**
+- [ ] Did I check 2+ independent sources?
+- [ ] Is this verified fact, not speculation?
+- [ ] Am I being honest, or inflating to save?
 
-**Common mistakes:**
-- ❌ Inflating ratings to ensure saves
-- ❌ Single source rated 8+
-- ❌ Social media rated 7+
-- ❌ Confusing "interesting" with "reliable"
+**Social media rule:** X/Twitter = MAX 6 (treat as tips, not facts)
 
-**Decision:** Interesting but unverified? Rate it 5-7, verify later.
+**Deep dive:** Don't trust first result. Check multiple sources. Verify claims.
+
+**When uncertain:** Rate lower. Quality 6-7 is fine, verify later.
 
 ---
 

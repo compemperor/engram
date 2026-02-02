@@ -175,14 +175,13 @@ docker restart engram          # Restart
 
 ---
 
-## ⚠️ Quality Rating Policy
+## Quality Rules
 
-**Before rating sources, read:** `QUALITY_RATING_POLICY.md` in Engram repo
+**Simple scale:**
+- 1-6: Single source, unverified, social media
+- 7: One good source OR two weak
+- 8+: TWO+ independent sources, verified
 
-**Quick rules:**
-- Social media = MAX 6
-- Quality 8+ needs 2+ independent sources
-- Use CRAAP test for evaluation
-- Be conservative with ratings
+**Before rating 8+:** Check 2+ sources. Don't inflate.
 
-See full policy for details.
+**Deep dive:** Verify claims across multiple sources.
