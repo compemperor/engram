@@ -12,9 +12,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Install Python dependencies
-# Use CPU-only torch to avoid CUDA bloat
-RUN pip install --no-cache-dir torch==2.5.1+cpu -f https://download.pytorch.org/whl/torch_stable.html && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY engram/ ./engram/
