@@ -172,3 +172,17 @@ docker ps | grep engram        # Status
 docker logs engram -f          # Logs
 docker restart engram          # Restart
 ```
+
+---
+
+## ⚠️ Quality Rating Policy
+
+**Before rating sources, read:** `QUALITY_RATING_POLICY.md` in Engram repo
+
+**Quick rules:**
+- Social media = MAX 6
+- Quality 8+ needs 2+ independent sources
+- Use CRAAP test for evaluation
+- Be conservative with ratings
+
+See full policy for details.

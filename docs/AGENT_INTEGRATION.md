@@ -61,6 +61,21 @@ How to integrate Engram with AI agents (Claude Code, OpenCode, LangChain, etc.)
 - Simple reminders
 - Already-verified knowledge
 
+### Quality Rating Standards
+
+**CRITICAL:** All agents must follow the **Quality Rating Policy** (`QUALITY_RATING_POLICY.md`).
+
+**Key principles:**
+- Social media (Twitter/X, Reddit) = MAX quality 6
+- Quality 8+ requires TWO independent sources
+- Use CRAAP test (Currency, Relevance, Authority, Accuracy, Purpose)
+- Be conservative: when uncertain, rate lower
+
+**Why this matters:**
+Without standards, agents unconsciously inflate ratings to ensure saves. This defeats quality gates and pollutes memory.
+
+**Read the full policy before every learning session.**
+
 ---
 
 ## Overview
