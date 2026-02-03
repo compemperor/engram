@@ -36,7 +36,9 @@ class MemoryStore:
         self,
         path: str = "./memories",
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
-        enable_faiss: bool = True
+        enable_faiss: bool = True,
+        auto_link_threshold: float = 0.75,
+        auto_link_max: int = 3
     ):
         self.path = Path(path)
         self.path.mkdir(parents=True, exist_ok=True)
@@ -45,6 +47,10 @@ class MemoryStore:
         self.lessons_file = self.path / "lessons.jsonl"
         self.index_file = self.path / "memory.faiss"
         self.metadata_file = self.path / "metadata.json"
+        
+        # Auto-linking config
+        self.auto_link_threshold = auto_link_threshold
+        self.auto_link_max = auto_link_max
         
         # Initialize subsystems
         self.embedder = EmbeddingEngine(model_name=embedding_model)
