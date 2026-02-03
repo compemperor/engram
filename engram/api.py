@@ -79,7 +79,8 @@ async def startup_event():
     drift_detector = DriftDetector(path="./memories")
     
     print("✓ Engram API started")
-    print(f"  Memory: {memory_store.get_stats()['total_memories']} memories")
+    stats = memory_store.get_stats()
+    print(f"  Memory: {stats.get('total_memories', 0)} memories")
     print(f"  FAISS: {'enabled' if memory_store.enable_faiss else 'disabled'}")
 
 
