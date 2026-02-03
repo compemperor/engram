@@ -168,7 +168,7 @@ Three layers working together:
 Separate personal experiences from general knowledge. Better organization and targeted retrieval.
 
 **Knowledge Graphs with Auto-Linking**  
-Store relationships between memories (caused_by, related_to, contradicts, supports, example_of, derived_from). **NEW in v0.2.6:** Automatic relationship detection using semantic similarity - memories auto-link when stored (spreading activation theory). Query connected memories via `/memory/related/{id}` and create relationships via `POST /memory/relationship`.
+Store relationships between memories (caused_by, related_to, contradicts, supports, example_of, derived_from). Automatic relationship detection using semantic similarity. Query connected memories via `/memory/related/{id}` and create relationships via `POST /memory/relationship`.
 
 **Active Recall**  
 Self-testing features. Quiz mode via `/recall/challenge`, recall tracking. Active learning > passive search.
@@ -176,13 +176,19 @@ Self-testing features. Quiz mode via `/recall/challenge`, recall tracking. Activ
 **Learning Sessions**  
 Structured learning with time tracking, quality filtering (auto-save >= 8), verification checkpoints, and consolidation.
 
-### v0.3.0 (Planned)
+### v0.3.0 ✅ (Released 2026-02-03)
 
-- Spaced repetition (Ebbinghaus forgetting curve)
+**Spaced Repetition** - Memory review scheduling based on Ebbinghaus forgetting curve
+- ✅ POST /recall/submit - Submit recall attempts
+- ✅ GET /recall/due - Get memories due for review  
+- ✅ Updated GET /recall/challenge - Prioritizes due memories
+
+### v0.4.0 (Next)
+
 - Temporal weighting (recency + importance)
-- Context-aware retrieval (situational relevance)
+- Context-aware retrieval (auto-expand related memories)
 
-### v0.4.0+ (Future)
+### v0.5.0+ (Future)
 
 - Memory compression (hierarchical summaries)
 - Memory replay (background consolidation)
@@ -190,7 +196,6 @@ Structured learning with time tracking, quality filtering (auto-save >= 8), veri
 - Better embedding models (E5, Sentence-BERT)
 - Alternative vector DBs (Milvus, Qdrant)
 
----
 
 ## License
 
