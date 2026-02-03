@@ -47,12 +47,12 @@ You wake up fresh each session. Your memory is **Engram** - don't use markdown f
 
 ### 📝 Write It Down - No "Mental Notes"!
 
-- **Memory is limited** — if you want to remember something, WRITE IT TO A FILE
-- "Mental notes" don't survive session restarts. Files do.
-- When someone says "remember this" → update `memory/YYYY-MM-DD.md` or relevant file
-- When you learn a lesson → update AGENTS.md, TOOLS.md, or the relevant skill
-- When you make a mistake → document it so future-you doesn't repeat it
-- **Text > Brain** 📝
+- **Memory is limited** — if you want to remember something, STORE IT IN ENGRAM
+- "Mental notes" don't survive session restarts. Engram does.
+- When someone says "remember this" → `/memory/add` with quality 8+ 
+- When you learn a lesson → store in Engram (topic-based, searchable)
+- When you make a mistake → document in Engram so future-you doesn't repeat it
+- **Engram > Brain** 🧠
 
 ### 🧠 Engram Memory System - Efficient Usage
 
