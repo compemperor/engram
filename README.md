@@ -167,8 +167,8 @@ Three layers working together:
 **Episodic vs Semantic Memory**  
 Separate personal experiences from general knowledge. Better organization and targeted retrieval.
 
-**Knowledge Graphs**  
-Store relationships between memories (caused_by, related_to, contradicts, supports, example_of, derived_from). Query connected memories via `/memory/related/{id}` and create relationships via `POST /memory/relationship`.
+**Knowledge Graphs with Auto-Linking**  
+Store relationships between memories (caused_by, related_to, contradicts, supports, example_of, derived_from). **NEW in v0.2.6:** Automatic relationship detection using semantic similarity - memories auto-link when stored (spreading activation theory). Query connected memories via `/memory/related/{id}` and create relationships via `POST /memory/relationship`.
 
 **Active Recall**  
 Self-testing features. Quiz mode via `/recall/challenge`, recall tracking. Active learning > passive search.
