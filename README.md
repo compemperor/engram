@@ -155,6 +155,35 @@ Three layers working together:
 
 ---
 
+## Roadmap
+
+### v0.2.0 (In Progress) 🚧
+
+**Episodic vs Semantic Memory**  
+Separate personal experiences from general knowledge. Better organization and targeted retrieval.
+
+**Knowledge Graphs**  
+Store relationships between memories. Answer "What relates to X?" and "Who said Y?" Enables contextual reasoning.
+
+**Active Recall**  
+Self-testing features. Quiz mode, challenge-response, recall tracking. Active learning > passive search.
+
+### v0.3.0 (Planned)
+
+- Spaced repetition (Ebbinghaus forgetting curve)
+- Temporal weighting (recency + importance)
+- Context-aware retrieval (situational relevance)
+
+### v0.4.0+ (Future)
+
+- Memory compression (hierarchical summaries)
+- Memory replay (background consolidation)
+- Meta-learning analytics (optimize over time)
+- Better embedding models (E5, Sentence-BERT)
+- Alternative vector DBs (Milvus, Qdrant)
+
+---
+
 ## License
 
 Apache 2.0

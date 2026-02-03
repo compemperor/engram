@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 import uvicorn
 
-from engram.memory.store import MemoryStore, SearchResult
+from engram.memory.store_v2 import MemoryStoreV2 as MemoryStore
+from engram.memory.types import SearchResult
 from engram.mirror.evaluator import MirrorEvaluator
 from engram.mirror.drift import DriftDetector
 from engram.learning.session import LearningSession
@@ -57,8 +58,8 @@ class VerificationRequest(BaseModel):
 # Initialize FastAPI app
 app = FastAPI(
     title="Engram API",
-    description="Memory traces for AI agents - Self-improving memory system",
-    version="0.1.2"
+    description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
+    version="0.2.0"
 )
 
 # Global state (initialized on startup)
@@ -89,8 +90,8 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.1.2",
-        "description": "Memory traces for AI agents",
+        "version": "0.2.0",
+        "description": "Memory traces for AI agents with knowledge graphs and active recall",
         "docs": "/docs",
         "health": "/health"
     }
@@ -398,6 +399,104 @@ async def list_sessions():
             for sid, session in active_sessions.items()
         ]
     }
+
+
+# Enhanced Memory Endpoints (v0.2.0)
+
+class AddLessonV2Request(BaseModel):
+    topic: str = Field(..., description="Topic category")
+    lesson: str = Field(..., description="The lesson/memory content")
+    memory_type: str = Field("semantic", description="Memory type: episodic or semantic")
+    source_quality: Optional[int] = Field(None, ge=1, le=10, description="Source quality (1-10)")
+    understanding: Optional[float] = Field(None, ge=1.0, le=5.0, description="Understanding score (1-5)")
+    entities: Optional[List[Dict]] = Field(None, description="Extracted entities")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+
+
+@app.post("/memory/add/v2")
+async def add_lesson_v2(request: AddLessonV2Request):
+    """Add memory with type classification (v0.2.0)"""
+    try:
+        memory = memory_store.add_lesson(
+            topic=request.topic,
+            lesson=request.lesson,
+            memory_type=request.memory_type,
+            source_quality=request.source_quality,
+            understanding=request.understanding,
+            entities=request.entities,
+            metadata=request.metadata
+        )
+        
+        return {
+            "status": "success",
+            "memory": memory.to_dict()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/memory/related/{memory_id}")
+async def get_related_memories(
+    memory_id: str,
+    relation_type: Optional[str] = None,
+    max_depth: int = 1
+):
+    """Get memories related via knowledge graph"""
+    try:
+        related = memory_store.get_related_memories(
+            memory_id=memory_id,
+            relation_type=relation_type,
+            max_depth=max_depth
+        )
+        
+        return {
+            "memory_id": memory_id,
+            "count": len(related),
+            "related": [m.to_dict() for m in related]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/recall/challenge")
+async def generate_recall_challenge(memory_id: Optional[str] = None):
+    """Generate active recall challenge"""
+    try:
+        # Get memories
+        memories = memory_store._load_all_memories()
+        
+        if memory_id:
+            # Specific memory
+            memory = next((m for m in memories if m.memory_id == memory_id), None)
+            if not memory:
+                raise HTTPException(status_code=404, detail="Memory not found")
+        else:
+            # Random memory
+            import random
+            memory = random.choice(memories)
+        
+        challenge = memory_store.recall_system.generate_challenge(memory)
+        
+        return {
+            "status": "success",
+            "challenge": challenge.to_dict()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/recall/stats")
+async def get_recall_stats(memory_id: Optional[str] = None):
+    """Get recall statistics"""
+    try:
+        stats = memory_store.recall_system.get_statistics(memory_id)
+        
+        return {
+            "status": "success",
+            "statistics": stats
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Main entry point
