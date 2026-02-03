@@ -56,11 +56,19 @@ class VerificationRequest(BaseModel):
     applications: Optional[List[str]] = Field(None, description="How to apply")
 
 
+class AddRelationshipRequest(BaseModel):
+    from_id: str = Field(..., description="Source memory ID")
+    to_id: str = Field(..., description="Target memory ID")
+    relation_type: str = Field(..., description="Relationship type: caused_by, related_to, contradicts, supports, example_of, derived_from")
+    confidence: float = Field(1.0, ge=0.0, le=1.0, description="Confidence in relationship (0-1)")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.2.3"
+    version="0.2.4"
 )
 
 # Global state (initialized on startup)
@@ -95,7 +103,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.2.3",
+        "version": "0.2.4",
         "description": "Memory traces for AI agents with knowledge graphs and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -481,6 +489,28 @@ async def get_related_memories(
             "count": len(related),
             "related": [m.to_dict() for m in related]
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/memory/relationship")
+async def add_relationship(request: AddRelationshipRequest):
+    """Add a relationship between two memories in the knowledge graph"""
+    try:
+        relationship = memory_store.add_relationship(
+            from_id=request.from_id,
+            to_id=request.to_id,
+            relation_type=request.relation_type,
+            confidence=request.confidence,
+            metadata=request.metadata
+        )
+        
+        return {
+            "status": "success",
+            "relationship": relationship
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

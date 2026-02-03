@@ -243,6 +243,41 @@ class MemoryStoreV2:
         # Filter to connected ones
         return [m for m in all_memories if m.memory_id in connected_ids]
     
+    def add_relationship(
+        self,
+        from_id: str,
+        to_id: str,
+        relation_type: str,
+        confidence: float = 1.0,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Add a relationship between two memories"""
+        from engram.memory.types import Relationship, RelationType
+        
+        # Validate memory IDs exist
+        all_memories = self._load_all_memories()
+        memory_ids = {m.memory_id for m in all_memories}
+        
+        if from_id not in memory_ids:
+            raise ValueError(f"Memory ID not found: {from_id}")
+        if to_id not in memory_ids:
+            raise ValueError(f"Memory ID not found: {to_id}")
+        
+        # Create relationship
+        relationship = Relationship(
+            from_id=from_id,
+            to_id=to_id,
+            relation_type=RelationType(relation_type),
+            confidence=confidence,
+            metadata=metadata
+        )
+        
+        # Add to graph
+        self.knowledge_graph.add_relationship(relationship)
+        self.knowledge_graph.save()
+        
+        return relationship.to_dict()
+    
     def _load_or_create_index(self):
         """Load or create FAISS index"""
         dimension = 384  # all-MiniLM-L6-v2 dimension
