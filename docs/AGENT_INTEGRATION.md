@@ -216,6 +216,10 @@ curl -X POST http://localhost:8765/learning/session/20260202-203000/verify \
     "applications": ["Can optimize data processing scripts"]
   }'
 
+# Check time status (NEW in v0.2.2)
+curl http://localhost:8765/learning/session/20260202-203000/time-check
+# Returns elapsed/remaining time, progress %, and whether target reached
+
 # Consolidate (notes with quality >= 8 auto-saved to memory)
 curl -X POST http://localhost:8765/learning/session/20260202-203000/consolidate
 ```
