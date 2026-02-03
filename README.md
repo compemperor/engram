@@ -8,6 +8,11 @@ Self-improving memory system with quality control, drift detection, and learning
 
 **🤖 For AI Agents:** See [AGENTS.md](AGENTS.md) for quick integration guide
 
+📚 **Documentation:**
+- [Memory Guide](./docs/MEMORY-GUIDE.md) - How to use memory efficiently ⭐
+- [Quick Reference](./docs/QUICK-REF.md) - Fast lookup for agents
+- [Agent Integration](./docs/AGENT_INTEGRATION.md) - API reference
+
 ---
 
 ## Why Engram?
