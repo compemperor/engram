@@ -60,7 +60,7 @@ class VerificationRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.2.2"
+    version="0.2.3"
 )
 
 # Global state (initialized on startup)
@@ -95,7 +95,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.2.2",
+        "version": "0.2.3",
         "description": "Memory traces for AI agents with knowledge graphs and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -280,10 +280,14 @@ async def start_session(
         if session_id in active_sessions:
             raise HTTPException(status_code=400, detail="Session already exists")
         
+        # Use MEMORY_PATH from environment to ensure persistence
+        memory_path = os.getenv("MEMORY_PATH", "/data/memories")
+        output_dir = os.path.join(memory_path, "learning-sessions")
+        
         session = LearningSession(
             topic=topic,
             duration_min=duration_min,
-            output_dir="./memories/learning-sessions",
+            output_dir=output_dir,
             enable_verification=True
         )
         
