@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 import uvicorn
+import os
 
 from engram.memory.store_v2 import MemoryStoreV2 as MemoryStore
 from engram.memory.types import SearchResult
@@ -74,9 +75,12 @@ async def startup_event():
     """Initialize Engram components on startup"""
     global memory_store, mirror_evaluator, drift_detector
     
-    memory_store = MemoryStore(path="./memories")
-    mirror_evaluator = MirrorEvaluator(path="./memories")
-    drift_detector = DriftDetector(path="./memories")
+    # Use environment variable for data path, default to /data/memories for Docker
+    data_path = os.getenv("ENGRAM_DATA_PATH", "/data/memories")
+    
+    memory_store = MemoryStoreV2(path=data_path)
+    mirror_evaluator = MirrorEvaluator(path=data_path)
+    drift_detector = DriftDetector(path=data_path)
     
     print("✓ Engram API started")
     stats = memory_store.get_stats()
