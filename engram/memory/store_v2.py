@@ -138,7 +138,7 @@ class MemoryStoreV2:
         if memory_type:
             memories = [
                 m for m in memories
-                if (m.memory_type.value if hasattr(m.memory_type, 'value') else m.memory_type) == memory_type
+                if str(m.memory_type.value if hasattr(m.memory_type, 'value') else m.memory_type) == str(memory_type)
             ]
         
         # Filter by quality
@@ -187,6 +187,34 @@ class MemoryStoreV2:
         results.sort(key=lambda x: x.score, reverse=True)
         
         return results[:top_k]
+    
+    def recall(
+        self,
+        topic: str,
+        min_quality: Optional[int] = None,
+        memory_type: Optional[str] = None
+    ) -> List[Memory]:
+        """Recall all memories for a specific topic"""
+        memories = self._load_all_memories()
+        
+        # Filter by topic
+        memories = [m for m in memories if m.topic == topic]
+        
+        # Filter by quality if specified
+        if min_quality:
+            memories = [
+                m for m in memories
+                if m.source_quality and m.source_quality >= min_quality
+            ]
+        
+        # Filter by type if specified
+        if memory_type:
+            memories = [
+                m for m in memories
+                if str(m.memory_type.value if hasattr(m.memory_type, 'value') else m.memory_type) == str(memory_type)
+            ]
+        
+        return memories
     
     def get_related_memories(
         self,
