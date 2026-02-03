@@ -60,8 +60,10 @@ class Memory:
     understanding: Optional[float] = None  # 1-5 scale
     entities: List[Entity] = field(default_factory=list)  # NEW: extracted entities
     metadata: Optional[Dict[str, Any]] = None
-    recall_count: int = 0  # NEW: track how many times recalled
-    last_recalled: Optional[str] = None  # NEW: for spaced repetition
+    recall_count: int = 0  # Track how many times recalled
+    last_recalled: Optional[str] = None  # Last recall timestamp
+    next_review: Optional[str] = None  # When to review next (spaced repetition)
+    review_success_rate: float = 0.0  # Success rate for this memory (0-1)
     
     def to_dict(self) -> Dict[str, Any]:
         result = asdict(self)

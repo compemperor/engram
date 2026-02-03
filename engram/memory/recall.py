@@ -1,14 +1,14 @@
 """
 Active Recall System
 
-Generates challenges and tracks recall performance
+Generates challenges and tracks recall performance with spaced repetition
 """
 
 import json
 import random
 from pathlib import Path
 from typing import List, Optional, Dict
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 
 from engram.memory.types import RecallChallenge, RecallAttempt, Memory
@@ -218,6 +218,79 @@ class ActiveRecallSystem:
         
         except:
             return 0.5  # Default if parse fails
+    
+    def calculate_next_review(
+        self,
+        memory: Memory,
+        success: bool
+    ) -> datetime:
+        """
+        Calculate next review date using spaced repetition (Ebbinghaus curve)
+        
+        Args:
+            memory: Memory being reviewed
+            success: Whether recall was successful
+        
+        Returns:
+            Next review datetime
+        """
+        # Get current interval
+        if memory.next_review:
+            try:
+                next_review_dt = datetime.fromisoformat(memory.next_review)
+                last_recalled_dt = datetime.fromisoformat(memory.last_recalled) if memory.last_recalled else datetime.utcnow()
+                current_interval_days = (next_review_dt - last_recalled_dt).days
+            except:
+                current_interval_days = 1  # Default
+        else:
+            current_interval_days = 1  # First review
+        
+        # Calculate new interval based on success
+        if success:
+            # Success: increase interval (× 2.5)
+            new_interval_days = max(1, int(current_interval_days * 2.5))
+        else:
+            # Failure: decrease interval (× 0.5)
+            new_interval_days = max(1, int(current_interval_days * 0.5))
+        
+        # Cap at 60 days
+        new_interval_days = min(new_interval_days, 60)
+        
+        # Calculate next review date
+        return datetime.utcnow() + timedelta(days=new_interval_days)
+    
+    def get_memories_due(
+        self,
+        memories: List[Memory]
+    ) -> List[Memory]:
+        """
+        Get memories that are due for review right now
+        
+        Args:
+            memories: All available memories
+        
+        Returns:
+            List of memories due for review (next_review < now)
+        """
+        now = datetime.utcnow()
+        due = []
+        
+        for memory in memories:
+            # Include if never reviewed
+            if memory.next_review is None:
+                due.append(memory)
+                continue
+            
+            # Include if next_review is in the past
+            try:
+                next_review_dt = datetime.fromisoformat(memory.next_review)
+                if next_review_dt <= now:
+                    due.append(memory)
+            except:
+                # If parse fails, include it
+                due.append(memory)
+        
+        return due
     
     def save(self) -> None:
         """Save challenges and attempts to disk"""

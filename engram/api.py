@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 import uvicorn
+from datetime import datetime
 import os
 
 from engram.memory.store import MemoryStore
@@ -64,6 +65,12 @@ class AddRelationshipRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
 
 
+class RecallSubmitRequest(BaseModel):
+    memory_id: str = Field(..., description="Memory ID being recalled")
+    answer: str = Field(..., description="User's answer")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in answer (0-1)")
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Engram API",
@@ -103,8 +110,8 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.2.7",
-        "description": "Memory traces for AI agents with knowledge graphs and active recall",
+        "version": "0.3.0",
+        "description": "Memory traces for AI agents with spaced repetition, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
     }
@@ -517,7 +524,7 @@ async def add_relationship(request: AddRelationshipRequest):
 
 @app.get("/recall/challenge")
 async def generate_recall_challenge(memory_id: Optional[str] = None):
-    """Generate active recall challenge"""
+    """Generate active recall challenge (prioritizes memories due for review)"""
     try:
         # Get memories
         memories = memory_store._load_all_memories()
@@ -528,15 +535,103 @@ async def generate_recall_challenge(memory_id: Optional[str] = None):
             if not memory:
                 raise HTTPException(status_code=404, detail="Memory not found")
         else:
-            # Random memory
-            import random
-            memory = random.choice(memories)
+            # Prioritize memories due for review (spaced repetition)
+            due_memories = memory_store.recall_system.get_memories_due(memories)
+            
+            if due_memories:
+                # Pick from due memories
+                import random
+                memory = random.choice(due_memories)
+            else:
+                # Fall back to random memory
+                import random
+                memory = random.choice(memories) if memories else None
+                
+            if not memory:
+                raise HTTPException(status_code=404, detail="No memories available")
         
         challenge = memory_store.recall_system.generate_challenge(memory)
         
         return {
             "status": "success",
             "challenge": challenge.to_dict()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/recall/submit")
+async def submit_recall(request: RecallSubmitRequest):
+    """Submit a recall attempt and update spaced repetition schedule"""
+    try:
+        # Get the memory
+        memories = memory_store._load_all_memories()
+        memory = next((m for m in memories if m.memory_id == request.memory_id), None)
+        
+        if not memory:
+            raise HTTPException(status_code=404, detail="Memory not found")
+        
+        # Simple success check: does answer contain expected topic?
+        success = memory.topic.lower() in request.answer.lower()
+        
+        # Record attempt (using memory_id as challenge_id for simplicity)
+        attempt = memory_store.recall_system.record_attempt(
+            challenge_id=request.memory_id,
+            memory_id=request.memory_id,
+            success=success,
+            confidence=request.confidence,
+            time_taken_ms=0  # TODO: Track client-side
+        )
+        
+        # Calculate next review date
+        next_review_dt = memory_store.recall_system.calculate_next_review(memory, success)
+        
+        # Update memory fields
+        memory.recall_count += 1
+        memory.last_recalled = datetime.now().isoformat()
+        memory.next_review = next_review_dt.isoformat()
+        
+        # Update success rate
+        attempts = [a for a in memory_store.recall_system.attempts if a.memory_id == memory.memory_id]
+        if attempts:
+            successes = sum(1 for a in attempts if a.success)
+            memory.review_success_rate = successes / len(attempts)
+        
+        # Persist memory updates to JSONL
+        memory_store.update_memory(memory)
+        
+        # Save recall system data
+        memory_store.recall_system.save()
+        
+        return {
+            "status": "success",
+            "attempt": attempt.to_dict(),
+            "success": success,
+            "next_review": next_review_dt.isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/recall/due")
+async def get_due_reviews():
+    """Get count of memories due for review"""
+    try:
+        memories = memory_store._load_all_memories()
+        due_memories = memory_store.recall_system.get_memories_due(memories)
+        
+        return {
+            "status": "success",
+            "count": len(due_memories),
+            "memories": [
+                {
+                    "memory_id": m.memory_id,
+                    "topic": m.topic,
+                    "next_review": m.next_review,
+                    "last_recalled": m.last_recalled
+                }
+                for m in due_memories[:10]  # Return top 10
+            ]
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

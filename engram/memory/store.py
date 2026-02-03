@@ -120,6 +120,32 @@ class MemoryStore:
         
         return memory
     
+    def update_memory(self, memory: Memory) -> None:
+        """
+        Update an existing memory in storage
+        
+        Args:
+            memory: Updated memory object
+        """
+        # Load all memories
+        memories = self._load_all_memories()
+        
+        # Find and replace the memory
+        updated = False
+        for i, m in enumerate(memories):
+            if m.memory_id == memory.memory_id:
+                memories[i] = memory
+                updated = True
+                break
+        
+        if not updated:
+            raise ValueError(f"Memory {memory.memory_id} not found")
+        
+        # Rewrite JSONL file
+        with open(self.lessons_file, "w") as f:
+            for m in memories:
+                f.write(json.dumps(m.to_dict()) + "\n")
+    
     def search(
         self,
         query: str,
@@ -329,6 +355,10 @@ class MemoryStore:
                         data["recall_count"] = 0
                     if "last_recalled" not in data:
                         data["last_recalled"] = None
+                    if "next_review" not in data:
+                        data["next_review"] = None
+                    if "review_success_rate" not in data:
+                        data["review_success_rate"] = 0.0
                     
                     memories.append(Memory(**data))
                 except Exception as e:
