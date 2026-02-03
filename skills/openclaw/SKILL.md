@@ -297,3 +297,32 @@ docker restart engram
 # Stop
 docker stop engram
 ```
+
+---
+
+## v0.2.0 Features ✨
+
+**Episodic vs Semantic:**
+```python
+# Episodic (experience/event)
+remember_experience("trading", "OVZON filled at 54.50", quality=9, memory_type="episodic")
+
+# Semantic (fact/rule)
+remember_rule("trading", "Adjust limit 2h before close", quality=9, memory_type="semantic")
+```
+
+**Knowledge Graphs:**
+```python
+# Get related memories
+related = get_related_memories(memory_id="abc123", max_depth=2)
+```
+
+**Active Recall:**
+```python
+# Generate challenge
+challenge = generate_recall_challenge(memory_id="abc123")
+
+# Get stats
+stats = get_recall_stats(memory_id="abc123")
+```
+

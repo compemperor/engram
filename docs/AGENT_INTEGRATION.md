@@ -79,6 +79,67 @@ How to integrate Engram with AI agents (Claude Code, OpenCode, LangChain, etc.)
 
 ---
 
+## New in v0.2.0 🚀
+
+### Episodic vs Semantic Memory
+
+**Episodic** = Personal experiences, events (when, where, what happened)
+- Example: "OVZON trade filled at 54.50 on 2026-02-03"
+
+**Semantic** = Facts, rules, concepts (general knowledge)
+- Example: "Adjust limit 2h before close if not filling"
+
+**Why it matters:** Different retrieval strategies, better organization, matches human memory.
+
+**Usage:**
+```python
+# Add episodic memory (experience)
+POST /memory/add/v2
+{"memory_type": "episodic", "topic": "trading", "lesson": "OVZON filled at 54.50"}
+
+# Add semantic memory (fact/rule)
+POST /memory/add/v2
+{"memory_type": "semantic", "topic": "trading", "lesson": "Adjust limits before close"}
+```
+
+### Knowledge Graphs
+
+**Relationships between memories** - Know what relates to what, who said what, what caused what.
+
+**Relationship types:**
+- `caused_by` - A caused B
+- `related_to` - A relates to B  
+- `supports` - A supports B
+- `contradicts` - A contradicts B
+- `example_of` - A is example of B
+
+**Usage:**
+```python
+# Get related memories
+GET /memory/related/{memory_id}?relation_type=related_to&max_depth=2
+```
+
+### Active Recall
+
+**Self-testing** - Quiz yourself, track performance, strengthen retention.
+
+**Usage:**
+```python
+# Generate challenge
+GET /recall/challenge?memory_id=abc123
+
+# Get statistics
+GET /recall/stats?memory_id=abc123
+```
+
+**Benefits:**
+- Stronger retention (retrieval practice)
+- Identify weak memories
+- Track learning progress
+- Active > passive learning
+
+---
+
 ## Overview
 
 Engram provides three integration methods:

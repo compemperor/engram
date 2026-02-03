@@ -187,3 +187,17 @@ docker restart engram          # Restart
 **Before rating 8+:** Check 2+ sources. Don't inflate.
 
 **Deep dive:** Verify claims across multiple sources.
+
+---
+
+## v0.2.0 Features
+
+**Episodic vs Semantic:**
+- Episodic: "Refactored auth module on 2026-02-03"
+- Semantic: "Always validate inputs before processing"
+
+**Knowledge Graphs:** Connect related memories (what relates to what)
+
+**Active Recall:** Self-test your learning, track retention
+
+See docs for API details.

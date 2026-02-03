@@ -348,3 +348,56 @@ docker stop engram
 **Before rating 8+:** Check 2+ sources. Don't inflate.
 
 **Deep dive:** Verify claims across multiple sources.
+
+---
+
+## v0.2.0 Features 🚀
+
+**Episodic vs Semantic Memory:**
+```python
+# Episodic (personal experience)
+engram.add_lesson_v2("debugging", "Fixed race condition in auth", memory_type="episodic")
+
+# Semantic (general knowledge)
+engram.add_lesson_v2("debugging", "Always check locks in concurrent code", memory_type="semantic")
+```
+
+**Knowledge Graphs:**
+```python
+# Get related memories
+related = engram.get_related_memories(memory_id="abc123", max_depth=2)
+```
+
+**Active Recall:**
+```python
+# Self-testing
+challenge = engram.generate_recall_challenge()
+stats = engram.get_recall_stats()
+```
+
+**Enhanced client methods:**
+```python
+def add_lesson_v2(self, topic: str, lesson: str, memory_type: str = "semantic", quality: int = 8):
+    response = requests.post(
+        f"{self.api}/memory/add/v2",
+        json={
+            "topic": topic,
+            "lesson": lesson,
+            "memory_type": memory_type,
+            "source_quality": quality
+        }
+    )
+    return response.json()
+
+def get_related_memories(self, memory_id: str, max_depth: int = 1):
+    response = requests.get(f"{self.api}/memory/related/{memory_id}?max_depth={max_depth}")
+    return response.json()
+
+def generate_recall_challenge(self, memory_id: str = None):
+    url = f"{self.api}/recall/challenge"
+    if memory_id:
+        url += f"?memory_id={memory_id}"
+    response = requests.get(url)
+    return response.json()
+```
+

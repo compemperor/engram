@@ -202,3 +202,17 @@ docker restart engram          # Restart
 **Before rating 8+:** Check 2+ sources. Don't inflate.
 
 **Deep dive:** Verify claims across multiple sources.
+
+---
+
+## v0.2.0 Features
+
+**Episodic vs Semantic:**
+- Episodic: Personal coding experiences
+- Semantic: General rules and patterns
+
+**Knowledge Graphs:** Relate memories to each other
+
+**Active Recall:** Self-testing for better retention
+
+See docs for full API.
