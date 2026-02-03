@@ -61,7 +61,9 @@ class ActiveRecallSystem:
             difficulty = "easy"  # Poor recall, make it easier
         
         # Generate question based on memory type
-        if memory.memory_type.value == "episodic":
+        memory_type_str = memory.memory_type.value if hasattr(memory.memory_type, 'value') else memory.memory_type
+        
+        if memory_type_str == "episodic":
             # For experiences: "What happened with X?"
             question = f"What did you learn from your experience with {memory.topic}?"
         else:
