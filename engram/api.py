@@ -60,7 +60,7 @@ class VerificationRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.2.1"
+    version="0.2.2"
 )
 
 # Global state (initialized on startup)
@@ -95,7 +95,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.2.1",
+        "version": "0.2.2",
         "description": "Memory traces for AI agents with knowledge graphs and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -344,6 +344,24 @@ async def verify_session(session_id: str, request: VerificationRequest):
                 "understanding": checkpoint.understanding,
                 "sources_verified": checkpoint.sources_verified
             }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/learning/session/{session_id}/time-check")
+async def session_time_check(session_id: str):
+    """Check time status of learning session"""
+    if session_id not in active_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    try:
+        session = active_sessions[session_id]
+        time_status = session.time_check()
+        
+        return {
+            "status": "success",
+            "time": time_status
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

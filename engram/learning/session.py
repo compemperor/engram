@@ -75,6 +75,10 @@ class LearningSession:
         self.insights: List[str] = []
         self.start_time = datetime.now()
         
+        # Calculate target end time for time awareness
+        from datetime import timedelta
+        self.target_end_time = self.start_time + timedelta(minutes=duration_min)
+        
         # Generate session file name
         timestamp = self.start_time.strftime("%Y-%m-%d-%H%M%S")
         safe_topic = "".join(c if c.isalnum() or c in " -" else "" for c in topic)
@@ -153,7 +157,13 @@ class LearningSession:
         Returns:
             Dict with session summary and metrics
         """
-        duration = (datetime.now() - self.start_time).total_seconds() / 60
+        duration = self.elapsed_time()
+        
+        # Warn if consolidating before target time (but still allow it)
+        if not self.is_target_time_reached():
+            remaining = self.time_remaining()
+            print(f"⚠️  Warning: Consolidating {remaining:.1f} min before target end time")
+            print(f"    Planned: {self.duration_min} min | Actual: {duration:.1f} min")
         
         # Auto-convert high-quality notes to insights
         for note in self.notes:
@@ -199,6 +209,60 @@ class LearningSession:
         if not self.checkpoints:
             return False
         return all(c.sources_verified for c in self.checkpoints)
+    
+    def time_remaining(self) -> float:
+        """
+        Get time remaining until target end time (in minutes).
+        
+        Returns:
+            Minutes remaining (negative if past target)
+        """
+        now = datetime.now()
+        remaining_seconds = (self.target_end_time - now).total_seconds()
+        return remaining_seconds / 60
+    
+    def elapsed_time(self) -> float:
+        """
+        Get elapsed time since session start (in minutes).
+        
+        Returns:
+            Minutes elapsed
+        """
+        now = datetime.now()
+        elapsed_seconds = (now - self.start_time).total_seconds()
+        return elapsed_seconds / 60
+    
+    def is_target_time_reached(self) -> bool:
+        """
+        Check if target end time has been reached.
+        
+        Returns:
+            True if current time >= target_end_time
+        """
+        return datetime.now() >= self.target_end_time
+    
+    def time_check(self) -> Dict[str, Any]:
+        """
+        Get current time status for the session.
+        
+        Returns:
+            Dict with time metrics
+        """
+        now = datetime.now()
+        elapsed = self.elapsed_time()
+        remaining = self.time_remaining()
+        progress_pct = (elapsed / self.duration_min) * 100 if self.duration_min > 0 else 0
+        
+        return {
+            "start_time": self.start_time.isoformat(),
+            "target_end_time": self.target_end_time.isoformat(),
+            "current_time": now.isoformat(),
+            "planned_duration_min": self.duration_min,
+            "elapsed_min": round(elapsed, 2),
+            "remaining_min": round(remaining, 2),
+            "progress_percent": round(progress_pct, 1),
+            "target_reached": self.is_target_time_reached()
+        }
     
     def _save_session_file(self, summary: Dict[str, Any]):
         """Save session to markdown file"""
