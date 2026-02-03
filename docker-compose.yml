@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   engram:
-    build: .
+    image: ghcr.io/compemperor/engram:latest
     container_name: engram
     ports:
       - "8765:8765"
