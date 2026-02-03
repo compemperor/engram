@@ -78,7 +78,7 @@ async def startup_event():
     # Use environment variable for data path, default to /data/memories for Docker
     data_path = os.getenv("ENGRAM_DATA_PATH", "/data/memories")
     
-    memory_store = MemoryStoreV2(path=data_path)
+    memory_store = MemoryStore(path=data_path)
     mirror_evaluator = MirrorEvaluator(path=data_path)
     drift_detector = DriftDetector(path=data_path)
     
