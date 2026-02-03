@@ -319,8 +319,14 @@ related = get_related_memories(memory_id="abc123", max_depth=2)
 
 **Active Recall:**
 ```python
-# Generate challenge
+# Generate challenge (prioritizes due memories)
 challenge = generate_recall_challenge(memory_id="abc123")
+
+# Submit recall attempt (updates spaced repetition schedule)
+submit_recall(memory_id="abc123", answer="my answer", confidence=0.9)
+
+# Check memories due for review
+due = get_due_reviews()
 
 # Get stats
 stats = get_recall_stats(memory_id="abc123")
