@@ -266,6 +266,11 @@ class MemoryStoreV2:
                     # Handle old format (no memory_type)
                     if "memory_type" not in data:
                         data["memory_type"] = "semantic"  # Default for old memories
+                    
+                    # Ensure memory_type is MemoryType enum
+                    if isinstance(data["memory_type"], str):
+                        data["memory_type"] = MemoryType(data["memory_type"])
+                    
                     if "memory_id" not in data:
                         # Generate ID for old memories
                         data["memory_id"] = hashlib.md5(
