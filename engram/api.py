@@ -68,7 +68,7 @@ class AddRelationshipRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.2.4"
+    version="0.2.5"
 )
 
 # Global state (initialized on startup)
@@ -103,7 +103,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.2.4",
+        "version": "0.2.5",
         "description": "Memory traces for AI agents with knowledge graphs and active recall",
         "docs": "/docs",
         "health": "/health"
