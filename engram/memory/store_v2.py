@@ -136,7 +136,10 @@ class MemoryStoreV2:
         
         # Filter by type if specified
         if memory_type:
-            memories = [m for m in memories if m.memory_type.value == memory_type]
+            memories = [
+                m for m in memories
+                if (m.memory_type.value if hasattr(m.memory_type, 'value') else m.memory_type) == memory_type
+            ]
         
         # Filter by quality
         if min_quality:
