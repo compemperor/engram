@@ -162,16 +162,19 @@ Three layers working together:
 
 ## Roadmap
 
-### v0.2.0 (In Progress) 🚧
+### v0.2.x (Completed) ✅
 
 **Episodic vs Semantic Memory**  
 Separate personal experiences from general knowledge. Better organization and targeted retrieval.
 
 **Knowledge Graphs**  
-Store relationships between memories. Answer "What relates to X?" and "Who said Y?" Enables contextual reasoning.
+Store relationships between memories (caused_by, related_to, contradicts, supports, example_of, derived_from). Query connected memories via `/memory/related/{id}` and create relationships via `POST /memory/relationship`.
 
 **Active Recall**  
-Self-testing features. Quiz mode, challenge-response, recall tracking. Active learning > passive search.
+Self-testing features. Quiz mode via `/recall/challenge`, recall tracking. Active learning > passive search.
+
+**Learning Sessions**  
+Structured learning with time tracking, quality filtering (auto-save >= 8), verification checkpoints, and consolidation.
 
 ### v0.3.0 (Planned)
 
