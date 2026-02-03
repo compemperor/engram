@@ -11,7 +11,7 @@ from typing import Optional, List, Dict, Any
 import uvicorn
 import os
 
-from engram.memory.store_v2 import MemoryStoreV2 as MemoryStore
+from engram.memory.store import MemoryStore
 from engram.memory.types import SearchResult
 from engram.mirror.evaluator import MirrorEvaluator
 from engram.mirror.drift import DriftDetector

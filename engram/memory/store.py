@@ -1,16 +1,12 @@
 """
-MemoryStore - Core memory storage and retrieval system
+MemoryStore - Enhanced with episodic/semantic, knowledge graphs, and active recall
 
-Handles:
-- Episodic memory storage (topic + lesson + metadata)
-- Semantic search via FAISS + embeddings
-- Quality filtering
-- Statistics tracking
+Main memory storage and retrieval system for Engram.
 """
 
 import json
-import os
-from dataclasses import dataclass, asdict
+import hashlib
+from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any
@@ -23,38 +19,17 @@ except ImportError:
     FAISS_AVAILABLE = False
 
 from engram.memory.embeddings import EmbeddingEngine
-
-
-@dataclass
-class Memory:
-    """Single memory entry"""
-    topic: str
-    lesson: str
-    timestamp: str
-    source_quality: Optional[int] = None  # 1-10 scale
-    understanding: Optional[float] = None  # 1-5 scale
-    metadata: Optional[Dict[str, Any]] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
-
-
-@dataclass
-class SearchResult:
-    """Search result with score"""
-    memory: Memory
-    score: float  # Similarity score (0-1, higher = better)
+from engram.memory.types import Memory, SearchResult, MemoryType, Entity
+from engram.memory.graph import KnowledgeGraph
+from engram.memory.recall import ActiveRecallSystem
 
 
 class MemoryStore:
     """
-    Main memory storage and retrieval system.
-    
-    Features:
-    - Local embeddings (all-MiniLM-L6-v2)
-    - FAISS vector search
-    - Quality filtering
-    - Topic-based recall
+    Enhanced memory store with:
+    - Episodic vs Semantic separation
+    - Knowledge graphs (relationships)
+    - Active recall system
     """
     
     def __init__(
@@ -63,25 +38,20 @@ class MemoryStore:
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
         enable_faiss: bool = True
     ):
-        """
-        Initialize memory store.
-        
-        Args:
-            path: Directory for memory storage
-            embedding_model: Sentence-transformers model name
-            enable_faiss: Use FAISS for vector search (requires faiss-cpu)
-        """
         self.path = Path(path)
         self.path.mkdir(parents=True, exist_ok=True)
         
+        # Storage files
         self.lessons_file = self.path / "lessons.jsonl"
         self.index_file = self.path / "memory.faiss"
         self.metadata_file = self.path / "metadata.json"
         
-        # Initialize embedding engine
+        # Initialize subsystems
         self.embedder = EmbeddingEngine(model_name=embedding_model)
+        self.knowledge_graph = KnowledgeGraph(self.path)
+        self.recall_system = ActiveRecallSystem(self.path)
         
-        # Initialize FAISS if available
+        # Initialize FAISS
         self.enable_faiss = enable_faiss and FAISS_AVAILABLE
         if self.enable_faiss:
             self._load_or_create_index()
@@ -93,49 +63,52 @@ class MemoryStore:
         self,
         topic: str,
         lesson: str,
+        memory_type: str = "semantic",  # "episodic" or "semantic"
         source_quality: Optional[int] = None,
         understanding: Optional[float] = None,
+        entities: Optional[List[Dict]] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> Memory:
-        """
-        Add a new lesson/memory.
+        """Add memory with type classification"""
         
-        Args:
-            topic: Topic category
-            lesson: The actual learning/lesson
-            source_quality: Quality score 1-10 (optional)
-            understanding: Understanding score 1-5 (optional)
-            metadata: Additional metadata (optional)
+        # Generate unique ID for memory
+        memory_id = hashlib.md5(
+            f"{topic}-{lesson[:50]}-{datetime.utcnow().isoformat()}".encode()
+        ).hexdigest()[:16]
         
-        Returns:
-            Memory object
-        """
+        # Parse entities if provided
+        entity_objects = []
+        if entities:
+            entity_objects = [Entity(**e) for e in entities]
+        
         memory = Memory(
             topic=topic,
             lesson=lesson,
+            memory_type=MemoryType(memory_type),
             timestamp=datetime.now().strftime("%Y-%m-%d %H:%M"),
+            memory_id=memory_id,
             source_quality=source_quality,
             understanding=understanding,
+            entities=entity_objects,
             metadata=metadata or {}
         )
         
-        # Append to JSONL
+        # Save to JSONL
         with open(self.lessons_file, "a") as f:
             f.write(json.dumps(memory.to_dict()) + "\n")
         
-        # Add to FAISS index if enabled
+        # Add to FAISS index
         if self.enable_faiss:
             embedding = self.embedder.encode(lesson)
-            # Reshape for FAISS
             embedding_2d = embedding.reshape(1, -1)
             self.index.add(embedding_2d)
-            
-            # Save index
             faiss.write_index(self.index, str(self.index_file))
         
         # Update metadata
         self.metadata["total_memories"] = self.metadata.get("total_memories", 0) + 1
-        self.metadata["topics"] = list(set(self.metadata.get("topics", []) + [topic]))
+        topics_set = set(self.metadata.get("topics", []))
+        topics_set.add(topic)
+        self.metadata["topics"] = list(topics_set)
         self.metadata["last_updated"] = datetime.now().isoformat()
         self._save_metadata()
         
@@ -146,184 +119,244 @@ class MemoryStore:
         query: str,
         top_k: int = 5,
         min_quality: Optional[int] = None,
-        topic_filter: Optional[str] = None
+        memory_type: Optional[str] = None,  # NEW: filter by type
+        topic_filter: Optional[str] = None,
+        include_relationships: bool = False  # NEW: include related memories
     ) -> List[SearchResult]:
-        """
-        Semantic search across memories.
+        """Enhanced search with type filtering and relationships"""
         
-        Args:
-            query: Search query
-            top_k: Number of results to return
-            min_quality: Minimum source quality (1-10)
-            topic_filter: Filter by specific topic
-        
-        Returns:
-            List of SearchResult objects
-        """
         if not self.enable_faiss:
-            # Fallback to text matching if FAISS not available
-            return self._search_text(query, top_k, min_quality, topic_filter)
+            return []
+        
+        # Get all memories
+        memories = self._load_all_memories()
+        
+        if not memories:
+            return []
+        
+        # Filter by type if specified
+        if memory_type:
+            memories = [
+                m for m in memories
+                if str(m.memory_type.value if hasattr(m.memory_type, 'value') else m.memory_type) == str(memory_type)
+            ]
+        
+        # Filter by quality
+        if min_quality:
+            memories = [
+                m for m in memories
+                if m.source_quality and m.source_quality >= min_quality
+            ]
+        
+        # Filter by topic
+        if topic_filter:
+            memories = [m for m in memories if m.topic == topic_filter]
+        
+        if not memories:
+            return []
         
         # Encode query
-        query_embedding = self.embedder.encode(query).reshape(1, -1)
+        query_embedding = self.embedder.encode(query)
+        query_2d = query_embedding.reshape(1, -1)
         
         # Search FAISS
-        distances, indices = self.index.search(query_embedding, top_k * 2)  # Get extra for filtering
+        k = min(top_k * 2, len(memories))  # Get more for filtering
+        distances, indices = self.index.search(query_2d, k)
         
-        # Load all memories
-        memories = list(self._iter_memories())
-        
+        # Build results
         results = []
-        for dist, idx in zip(distances[0], indices[0]):
+        for i, (dist, idx) in enumerate(zip(distances[0], indices[0])):
             if idx >= len(memories):
                 continue
-                
+            
             memory = memories[idx]
+            similarity = float(1 / (1 + dist))  # Convert distance to similarity
             
-            # Apply filters
-            if min_quality and (memory.source_quality is None or memory.source_quality < min_quality):
-                continue
-            if topic_filter and memory.topic != topic_filter:
-                continue
+            # Get relationships if requested
+            relationships = []
+            if include_relationships:
+                relationships = self.knowledge_graph.get_related(memory.memory_id)
             
-            # Convert distance to similarity score (0-1, higher = better)
-            # FAISS L2 distance: lower = more similar
-            # Convert to similarity: 1 / (1 + distance)
-            score = 1.0 / (1.0 + dist)
-            
-            results.append(SearchResult(memory=memory, score=score))
-            
-            if len(results) >= top_k:
-                break
+            results.append(SearchResult(
+                memory=memory,
+                score=similarity,
+                relationships=relationships
+            ))
         
-        return results
+        # Sort by score
+        results.sort(key=lambda x: x.score, reverse=True)
+        
+        return results[:top_k]
     
     def recall(
         self,
         topic: str,
-        min_quality: Optional[int] = None
+        min_quality: Optional[int] = None,
+        memory_type: Optional[str] = None
     ) -> List[Memory]:
-        """
-        Recall all memories for a specific topic.
+        """Recall all memories for a specific topic"""
+        memories = self._load_all_memories()
         
-        Args:
-            topic: Topic to recall
-            min_quality: Minimum source quality filter
+        # Filter by topic
+        memories = [m for m in memories if m.topic == topic]
         
-        Returns:
-            List of Memory objects
-        """
-        memories = []
-        for memory in self._iter_memories():
-            if memory.topic == topic:
-                if min_quality is None or (memory.source_quality and memory.source_quality >= min_quality):
-                    memories.append(memory)
+        # Filter by quality if specified
+        if min_quality:
+            memories = [
+                m for m in memories
+                if m.source_quality and m.source_quality >= min_quality
+            ]
+        
+        # Filter by type if specified
+        if memory_type:
+            memories = [
+                m for m in memories
+                if str(m.memory_type.value if hasattr(m.memory_type, 'value') else m.memory_type) == str(memory_type)
+            ]
+        
         return memories
     
-    def get_stats(self) -> Dict[str, Any]:
-        """Get memory statistics"""
-        return {
-            "total_memories": self.metadata.get("total_memories", 0),
-            "topics": self.metadata.get("topics", []),
-            "last_updated": self.metadata.get("last_updated"),
-            "faiss_enabled": self.enable_faiss,
-            "embedding_model": self.embedder.model_name
-        }
-    
-    def rebuild_index(self):
-        """Rebuild FAISS index from scratch"""
-        if not self.enable_faiss:
-            raise RuntimeError("FAISS not enabled")
+    def get_related_memories(
+        self,
+        memory_id: str,
+        relation_type: Optional[str] = None,
+        max_depth: int = 1
+    ) -> List[Memory]:
+        """Get memories related to this one via knowledge graph"""
         
-        print("Rebuilding FAISS index...")
+        # Get connected memory IDs
+        if relation_type:
+            from engram.memory.types import RelationType
+            rel_type = RelationType(relation_type)
+        else:
+            rel_type = None
+        
+        connected_ids = self.knowledge_graph.get_connected_memories(
+            memory_id,
+            relation_type=rel_type,
+            max_depth=max_depth
+        )
         
         # Load all memories
-        memories = list(self._iter_memories())
+        all_memories = self._load_all_memories()
         
-        if not memories:
-            print("No memories to index")
-            return
-        
-        # Encode all lessons
-        lessons = [m.lesson for m in memories]
-        embeddings = []
-        
-        for lesson in lessons:
-            emb = self.embedder.encode(lesson)
-            embeddings.append(emb)
-        
-        embeddings = np.array(embeddings)
-        
-        # Create new index
-        dimension = embeddings.shape[1]
-        self.index = faiss.IndexFlatL2(dimension)
-        self.index.add(embeddings)
-        
-        # Save
-        faiss.write_index(self.index, str(self.index_file))
-        
-        print(f"✓ Indexed {len(memories)} memories")
+        # Filter to connected ones
+        return [m for m in all_memories if m.memory_id in connected_ids]
     
-    # Private methods
-    
-    def _iter_memories(self):
-        """Iterate over all memories in JSONL file"""
-        if not self.lessons_file.exists():
-            return
-        
-        with open(self.lessons_file, "r") as f:
-            for line in f:
-                if line.strip():
-                    data = json.loads(line)
-                    yield Memory(**data)
-    
-    def _search_text(
+    def add_relationship(
         self,
-        query: str,
-        top_k: int,
-        min_quality: Optional[int],
-        topic_filter: Optional[str]
-    ) -> List[SearchResult]:
-        """Fallback text-based search (when FAISS not available)"""
-        query_lower = query.lower()
-        results = []
+        from_id: str,
+        to_id: str,
+        relation_type: str,
+        confidence: float = 1.0,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Add a relationship between two memories"""
+        from engram.memory.types import Relationship, RelationType
         
-        for memory in self._iter_memories():
-            # Apply filters
-            if min_quality and (memory.source_quality is None or memory.source_quality < min_quality):
-                continue
-            if topic_filter and memory.topic != topic_filter:
-                continue
-            
-            # Simple text matching
-            lesson_lower = memory.lesson.lower()
-            if query_lower in lesson_lower:
-                # Score based on position and length
-                pos = lesson_lower.index(query_lower)
-                score = 1.0 / (1.0 + pos / len(lesson_lower))
-                results.append(SearchResult(memory=memory, score=score))
+        # Validate memory IDs exist
+        all_memories = self._load_all_memories()
+        memory_ids = {m.memory_id for m in all_memories}
         
-        # Sort by score and return top_k
-        results.sort(key=lambda x: x.score, reverse=True)
-        return results[:top_k]
+        if from_id not in memory_ids:
+            raise ValueError(f"Memory ID not found: {from_id}")
+        if to_id not in memory_ids:
+            raise ValueError(f"Memory ID not found: {to_id}")
+        
+        # Create relationship
+        relationship = Relationship(
+            from_id=from_id,
+            to_id=to_id,
+            relation_type=RelationType(relation_type),
+            confidence=confidence,
+            metadata=metadata
+        )
+        
+        # Add to graph
+        self.knowledge_graph.add_relationship(relationship)
+        self.knowledge_graph.save()
+        
+        return relationship.to_dict()
     
     def _load_or_create_index(self):
-        """Load existing FAISS index or create new one"""
+        """Load or create FAISS index"""
+        dimension = 384  # all-MiniLM-L6-v2 dimension
+        
         if self.index_file.exists():
             self.index = faiss.read_index(str(self.index_file))
         else:
-            # Create empty index (will be populated when memories are added)
-            dimension = 384  # all-MiniLM-L6-v2 dimension
             self.index = faiss.IndexFlatL2(dimension)
     
-    def _load_metadata(self) -> Dict[str, Any]:
-        """Load metadata file"""
+    def _load_all_memories(self) -> List[Memory]:
+        """Load all memories from JSONL"""
+        if not self.lessons_file.exists():
+            return []
+        
+        memories = []
+        with open(self.lessons_file, "r") as f:
+            for line in f:
+                try:
+                    data = json.loads(line.strip())
+                    
+                    # Handle old format (no memory_type)
+                    if "memory_type" not in data:
+                        data["memory_type"] = "semantic"  # Default for old memories
+                    
+                    # Ensure memory_type is MemoryType enum
+                    if isinstance(data["memory_type"], str):
+                        data["memory_type"] = MemoryType(data["memory_type"])
+                    
+                    if "memory_id" not in data:
+                        # Generate ID for old memories
+                        data["memory_id"] = hashlib.md5(
+                            f"{data['topic']}-{data['lesson'][:50]}".encode()
+                        ).hexdigest()[:16]
+                    
+                    # Parse entities if present
+                    if "entities" in data and data["entities"]:
+                        data["entities"] = [Entity(**e) for e in data["entities"]]
+                    else:
+                        data["entities"] = []
+                    
+                    # Set defaults for recall fields
+                    if "recall_count" not in data:
+                        data["recall_count"] = 0
+                    if "last_recalled" not in data:
+                        data["last_recalled"] = None
+                    
+                    memories.append(Memory(**data))
+                except Exception as e:
+                    print(f"Warning: Could not parse memory: {e}")
+                    continue
+        
+        return memories
+    
+    def _load_metadata(self) -> Dict:
+        """Load metadata"""
         if self.metadata_file.exists():
             with open(self.metadata_file, "r") as f:
                 return json.load(f)
         return {}
     
     def _save_metadata(self):
-        """Save metadata file"""
+        """Save metadata"""
         with open(self.metadata_file, "w") as f:
             json.dump(self.metadata, f, indent=2)
+    
+    def get_stats(self) -> Dict:
+        """Get comprehensive statistics"""
+        memories = self._load_all_memories()
+        
+        episodic_count = sum(1 for m in memories if m.memory_type == MemoryType.EPISODIC)
+        semantic_count = sum(1 for m in memories if m.memory_type == MemoryType.SEMANTIC)
+        
+        graph_stats = self.knowledge_graph.get_stats()
+        recall_stats = self.recall_system.get_statistics()
+        
+        return {
+            **self.metadata,
+            "episodic_memories": episodic_count,
+            "semantic_memories": semantic_count,
+            "knowledge_graph": graph_stats,
+            "recall_stats": recall_stats
+        }
