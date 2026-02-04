@@ -11,21 +11,22 @@ Self-improving memory system with episodic/semantic memory, active recall, and l
 
 ---
 
-## ✨ What's New in v0.4.0
+## ✨ What's New in v0.4.x
 
-**Temporal Weighting** - Recent and high-quality memories now rank higher in search results
+**Temporal Weighting** (v0.4.0) - Recent and high-quality memories now rank higher in search results
 - Exponential recency decay (30-day half-life)
 - Quality boost (source_quality 1-10)
 - Verified +48% score improvement on high-quality recent memories
-- Enabled by default with `use_temporal_weighting: true`
+- **Enabled by default** with `use_temporal_weighting: true`
 
-**Context-Aware Retrieval** - Automatically expand search with related memories
+**Context-Aware Retrieval** (v0.4.0, **default enabled v0.4.1**) - Automatically expand search with related memories
 - Follows knowledge graph relationships (related_to, caused_by, etc.)
 - Configurable depth: 1-3 levels
 - Related memories get 70% of parent score
-- Opt-in with `auto_expand_context: true`
+- **Now enabled by default** with `auto_expand_context: true` (v0.4.1+)
+- Opt-out with `auto_expand_context: false` if you want exact `top_k` only
 
-**Improved Logging** - All container logs now include timestamps (`YYYY-MM-DD HH:MM:SS`)
+**Improved Logging** (v0.4.0) - All container logs now include timestamps (`YYYY-MM-DD HH:MM:SS`)
 
 ---
 
