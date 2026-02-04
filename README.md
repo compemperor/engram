@@ -197,12 +197,21 @@ Structured learning with time tracking, quality filtering (auto-save >= 8), veri
 - Related memories get 70% of parent score
 - Toggle with `auto_expand_context` parameter
 
-### v0.5.0+ (Future)
+### v0.5.0 ✅ (Released 2026-02-04)
+
+**E5-base-v2 Embedding Model** - Significantly better semantic search
+- Upgraded from `all-MiniLM-L6-v2` to `intfloat/e5-base-v2`
+- 2x richer representations (768 vs 384 dimensions)
+- Better semantic understanding and nuanced matching
+- Longer context window (512 vs 256 tokens)
+- Improved handling of technical jargon
+- Auto-rebuild FAISS index on dimension mismatch
+
+### v0.6.0+ (Future)
 
 - Memory compression (hierarchical summaries)
 - Memory replay (background consolidation)
 - Meta-learning analytics (optimize over time)
-- Better embedding models (E5, Sentence-BERT)
 - Alternative vector DBs (Milvus, Qdrant)
 
 
