@@ -11,22 +11,26 @@ Self-improving memory system with episodic/semantic memory, active recall, and l
 
 ---
 
-## ✨ What's New in v0.4.x
+## ✨ What's New in v0.5.x
 
-**Temporal Weighting** (v0.4.0) - Recent and high-quality memories now rank higher in search results
+**E5-base-v2 Embedding Model** (v0.5.0) - Significantly better semantic search quality
+- Upgraded from all-MiniLM-L6-v2 (384-dim) to E5-base-v2 (768-dim)
+- **Better semantic understanding** - finds "don't chase FOMO" when searching "avoid emotional trades"
+- Automatic query/passage prefix handling (no manual work needed)
+- Auto-rebuild FAISS index on dimension mismatch
+- 430MB model (one-time download on first startup)
+
+**Temporal Weighting** (v0.4.0) - Recent and high-quality memories rank higher
 - Exponential recency decay (30-day half-life)
 - Quality boost (source_quality 1-10)
-- Verified +48% score improvement on high-quality recent memories
 - **Enabled by default** with `use_temporal_weighting: true`
 
-**Context-Aware Retrieval** (v0.4.0, **default enabled v0.4.1**) - Automatically expand search with related memories
+**Context-Aware Retrieval** (v0.4.1) - Automatically expand with related memories
 - Follows knowledge graph relationships (related_to, caused_by, etc.)
 - Configurable depth: 1-3 levels
-- Related memories get 70% of parent score
-- **Now enabled by default** with `auto_expand_context: true` (v0.4.1+)
-- Opt-out with `auto_expand_context: false` if you want exact `top_k` only
+- **Enabled by default** with `auto_expand_context: true`
 
-**Improved Logging** (v0.4.0) - All container logs now include timestamps (`YYYY-MM-DD HH:MM:SS`)
+**Improved Logging** (v0.4.0) - All logs include timestamps (`YYYY-MM-DD HH:MM:SS`)
 
 ---
 
