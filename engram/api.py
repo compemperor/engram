@@ -78,7 +78,7 @@ class RecallSubmitRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.5.0"
+    version="0.5.1"
 )
 
 # Global state (initialized on startup)
@@ -113,7 +113,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.5.0",
+        "version": "0.5.1",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -189,7 +189,7 @@ async def search_memory(request: SearchRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/memory/recall/{topic}")
+@app.get("/memory/recall/{topic:path}")
 async def recall_topic(topic: str, min_quality: Optional[int] = None):
     """Recall all memories for a specific topic"""
     try:
