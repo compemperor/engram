@@ -4,8 +4,7 @@
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ENGRAM_DATA_PATH` | `/data/memories` | Path to store memory files |
-| `MEMORY_PATH` | `/data/memories` | Alternative path variable (Docker) |
+| `ENGRAM_DATA_PATH` | `/data/memories` | Path to store memory files (set in Docker image) |
 
 ## MemoryStore Constructor Options
 
@@ -54,14 +53,12 @@ services:
       - "8765:8765"
     volumes:
       - ./memories:/data/memories    # REQUIRED: persist memory data
-    environment:
-      - MEMORY_PATH=/data/memories   # Already set in Dockerfile
     restart: unless-stopped
 ```
 
 **Without the volume mount**, all memories are lost when the container restarts!
 
-The `MEMORY_PATH` environment variable is pre-set in the Docker image to `/data/memories`. You just need to mount a host directory to that path.
+The image already has `MEMORY_PATH=/data/memories` set. Just mount your host directory to `/data/memories`.
 
 ## API Configuration
 

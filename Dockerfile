@@ -25,7 +25,7 @@ EXPOSE 8765
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV MEMORY_PATH=/data/memories
+ENV ENGRAM_DATA_PATH=/data/memories
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
