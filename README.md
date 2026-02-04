@@ -207,6 +207,14 @@ Structured learning with time tracking, quality filtering (auto-save >= 8), veri
 - Improved handling of technical jargon
 - Auto-rebuild FAISS index on dimension mismatch
 
+### v0.6.1 ✅ (Released 2026-02-04)
+
+**Sleep Scheduler** - Automatic memory consolidation
+- Background scheduler runs fade cycles every 24 hours
+- Like the brain during sleep - no manual cron needed
+- Graceful startup (5 min delay) and shutdown
+- New endpoint: `/memory/sleep/status`
+
 ### v0.6.0 ✅ (Released 2026-02-04)
 
 **Memory Fading** - Biologically-inspired forgetting
@@ -214,7 +222,6 @@ Structured learning with time tracking, quality filtering (auto-save >= 8), veri
 - Exponential decay (30-day half-life, configurable)
 - Memories fade to "dormant" status (excluded from search, not deleted)
 - Auto-boost on access - searching strengthens memories
-- Run `/memory/fade/cycle` periodically to update statuses
 
 ### v0.7.0+ (Future)
 
