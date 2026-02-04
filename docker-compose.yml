@@ -5,7 +5,7 @@ services:
     ports:
       - "8765:8765"
     volumes:
-      - ./memories:/data/memories
+      - ${HOME}/.openclaw/workspace/engram-data:/data/memories
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8765/health')"]
