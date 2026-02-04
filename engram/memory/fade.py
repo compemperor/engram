@@ -10,6 +10,7 @@ Memories fade but are never deleted - they become "dormant" and can be recovered
 """
 
 import math
+import os
 from datetime import datetime, timedelta
 from typing import List, Optional, Tuple, Dict, Any
 from dataclasses import dataclass
@@ -17,13 +18,13 @@ from dataclasses import dataclass
 from engram.memory.types import Memory
 
 
-# Configuration
-DECAY_HALF_LIFE_DAYS = 30  # Memory strength halves every 30 days without access
-DORMANT_THRESHOLD = 0.2  # Below this strength, memory becomes dormant
-MIN_STRENGTH = 0.01  # Never decay below this (recoverable)
-QUALITY_WEIGHT = 0.4  # How much quality affects strength
-RECALL_WEIGHT = 0.3  # How much recall success affects strength
-ACCESS_WEIGHT = 0.3  # How much access frequency affects strength
+# Configuration - all configurable via environment variables
+DECAY_HALF_LIFE_DAYS = float(os.getenv("ENGRAM_DECAY_HALF_LIFE_DAYS", "30"))
+DORMANT_THRESHOLD = float(os.getenv("ENGRAM_DORMANT_THRESHOLD", "0.2"))
+MIN_STRENGTH = float(os.getenv("ENGRAM_MIN_STRENGTH", "0.01"))
+QUALITY_WEIGHT = float(os.getenv("ENGRAM_QUALITY_WEIGHT", "0.4"))
+RECALL_WEIGHT = float(os.getenv("ENGRAM_RECALL_WEIGHT", "0.3"))
+ACCESS_WEIGHT = float(os.getenv("ENGRAM_ACCESS_WEIGHT", "0.3"))
 
 
 @dataclass

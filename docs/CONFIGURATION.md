@@ -26,16 +26,21 @@ MemoryStore(
 
 ## Memory Fading Configuration
 
-In `engram/memory/fade.py`:
+| Environment Variable | Default | Description |
+|---------------------|---------|-------------|
+| `ENGRAM_DECAY_HALF_LIFE_DAYS` | 30 | Memory strength halves every N days without access |
+| `ENGRAM_DORMANT_THRESHOLD` | 0.2 | Below this strength, memory becomes dormant |
+| `ENGRAM_MIN_STRENGTH` | 0.01 | Minimum strength (never fully forgotten) |
+| `ENGRAM_QUALITY_WEIGHT` | 0.4 | Weight of quality in strength calculation |
+| `ENGRAM_RECALL_WEIGHT` | 0.3 | Weight of recall success in strength |
+| `ENGRAM_ACCESS_WEIGHT` | 0.3 | Weight of access frequency in strength |
 
-| Constant | Default | Description |
-|----------|---------|-------------|
-| `DECAY_HALF_LIFE_DAYS` | 30 | Memory strength halves every N days without access |
-| `DORMANT_THRESHOLD` | 0.2 | Below this strength, memory becomes dormant |
-| `MIN_STRENGTH` | 0.01 | Minimum strength (never fully forgotten) |
-| `QUALITY_WEIGHT` | 0.4 | Weight of quality in strength calculation |
-| `RECALL_WEIGHT` | 0.3 | Weight of recall success in strength |
-| `ACCESS_WEIGHT` | 0.3 | Weight of access frequency in strength |
+Example docker-compose override:
+```yaml
+environment:
+  - ENGRAM_DECAY_HALF_LIFE_DAYS=14  # Faster decay
+  - ENGRAM_DORMANT_THRESHOLD=0.3   # Higher threshold
+```
 
 ## Docker Compose (Required Setup)
 
