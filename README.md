@@ -183,10 +183,19 @@ Structured learning with time tracking, quality filtering (auto-save >= 8), veri
 - ✅ GET /recall/due - Get memories due for review  
 - ✅ Updated GET /recall/challenge - Prioritizes due memories
 
-### v0.4.0 (Next)
+### v0.4.0 ✅ (Released 2026-02-04)
 
-- Temporal weighting (recency + importance)
-- Context-aware retrieval (auto-expand related memories)
+**Temporal Weighting** - Boost recent + high-quality memories in search results
+- Exponential recency decay (30-day half-life)
+- Quality boost (source_quality 1-10)
+- Combined scoring: `similarity × (1 + recency_factor + quality_factor)`
+- Toggle with `use_temporal_weighting` parameter
+
+**Context-Aware Retrieval** - Auto-expand related memories
+- Leverages knowledge graph relationships
+- Configurable expansion depth (1-3 levels)
+- Related memories get 70% of parent score
+- Toggle with `auto_expand_context` parameter
 
 ### v0.5.0+ (Future)
 

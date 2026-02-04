@@ -146,63 +146,114 @@ class MemoryStore:
             for m in memories:
                 f.write(json.dumps(m.to_dict()) + "\n")
     
+    def _calculate_temporal_score(
+        self,
+        memory: Memory,
+        base_similarity: float,
+        recency_weight: float = 0.3,
+        quality_weight: float = 0.2
+    ) -> float:
+        """
+        Calculate temporal-weighted score combining:
+        - Base similarity (semantic match)
+        - Recency (newer = higher)
+        - Quality (source_quality boost)
+        
+        Formula: score = similarity * (1 + recency_factor + quality_factor)
+        """
+        # Parse timestamp
+        try:
+            timestamp = datetime.strptime(memory.timestamp, "%Y-%m-%d %H:%M")
+            days_ago = (datetime.now() - timestamp).days
+            
+            # Exponential decay: newer memories get higher boost
+            # Max boost at day 0: recency_weight
+            # Half-life: 30 days
+            recency_factor = recency_weight * (0.5 ** (days_ago / 30.0))
+        except:
+            recency_factor = 0.0
+        
+        # Quality boost (normalized to 0-1, then scaled)
+        if memory.source_quality:
+            quality_factor = quality_weight * (memory.source_quality / 10.0)
+        else:
+            quality_factor = 0.0
+        
+        # Combined score
+        final_score = base_similarity * (1.0 + recency_factor + quality_factor)
+        
+        return final_score
+    
     def search(
         self,
         query: str,
         top_k: int = 5,
         min_quality: Optional[int] = None,
-        memory_type: Optional[str] = None,  # NEW: filter by type
+        memory_type: Optional[str] = None,  # Filter by type
         topic_filter: Optional[str] = None,
-        include_relationships: bool = False  # NEW: include related memories
+        include_relationships: bool = False,  # Include related memories
+        use_temporal_weighting: bool = True,  # NEW: temporal weighting
+        auto_expand_context: bool = False,  # NEW: auto-expand related memories
+        expansion_depth: int = 1  # NEW: how deep to expand
     ) -> List[SearchResult]:
-        """Enhanced search with type filtering and relationships"""
+        """
+        Enhanced search with:
+        - Type filtering
+        - Temporal weighting (recency + importance)
+        - Context-aware retrieval (auto-expand related memories)
+        """
         
         if not self.enable_faiss:
             return []
         
-        # Get all memories
-        memories = self._load_all_memories()
+        # Get all memories (don't filter yet - FAISS indices must match)
+        all_memories = self._load_all_memories()
         
-        if not memories:
-            return []
-        
-        # Filter by type if specified
-        if memory_type:
-            memories = [
-                m for m in memories
-                if str(m.memory_type.value if hasattr(m.memory_type, 'value') else m.memory_type) == str(memory_type)
-            ]
-        
-        # Filter by quality
-        if min_quality:
-            memories = [
-                m for m in memories
-                if m.source_quality and m.source_quality >= min_quality
-            ]
-        
-        # Filter by topic
-        if topic_filter:
-            memories = [m for m in memories if m.topic == topic_filter]
-        
-        if not memories:
+        if not all_memories:
             return []
         
         # Encode query
         query_embedding = self.embedder.encode(query)
         query_2d = query_embedding.reshape(1, -1)
         
-        # Search FAISS
-        k = min(top_k * 2, len(memories))  # Get more for filtering
+        # Search FAISS (search ALL, then filter)
+        k = min(top_k * 5, len(all_memories))  # Get more candidates for filtering
         distances, indices = self.index.search(query_2d, k)
         
-        # Build results
+        # Build results with temporal weighting
         results = []
+        seen_ids = set()  # Track unique memories
+        
         for i, (dist, idx) in enumerate(zip(distances[0], indices[0])):
-            if idx >= len(memories):
+            if idx >= len(all_memories):
                 continue
             
-            memory = memories[idx]
-            similarity = float(1 / (1 + dist))  # Convert distance to similarity
+            memory = all_memories[idx]
+            
+            # Apply filters AFTER retrieval
+            if memory_type:
+                mem_type_str = str(memory.memory_type.value if hasattr(memory.memory_type, 'value') else memory.memory_type)
+                if mem_type_str != str(memory_type):
+                    continue
+            
+            if min_quality and (not memory.source_quality or memory.source_quality < min_quality):
+                continue
+            
+            if topic_filter and memory.topic != topic_filter:
+                continue
+            
+            if memory.memory_id in seen_ids:
+                continue
+            seen_ids.add(memory.memory_id)
+            
+            # Base similarity score
+            base_similarity = float(1 / (1 + dist))
+            
+            # Apply temporal weighting if enabled
+            if use_temporal_weighting:
+                score = self._calculate_temporal_score(memory, base_similarity)
+            else:
+                score = base_similarity
             
             # Get relationships if requested
             relationships = []
@@ -211,14 +262,55 @@ class MemoryStore:
             
             results.append(SearchResult(
                 memory=memory,
-                score=similarity,
+                score=score,
                 relationships=relationships
             ))
+            
+            # Stop once we have enough filtered results
+            if len(results) >= top_k:
+                break
         
-        # Sort by score
+        # Sort by final score (temporal-weighted or base)
         results.sort(key=lambda x: x.score, reverse=True)
         
-        return results[:top_k]
+        # Take top K
+        top_results = results[:top_k]
+        
+        # Context-aware expansion: auto-include related memories
+        if auto_expand_context and top_results:
+            expanded_results = []
+            all_memories_dict = {m.memory_id: m for m in all_memories}
+            
+            for result in top_results:
+                # Add the primary result
+                expanded_results.append(result)
+                
+                # Get related memories through knowledge graph
+                related_ids = self.knowledge_graph.get_connected_memories(
+                    result.memory.memory_id,
+                    max_depth=expansion_depth
+                )
+                
+                # Add related memories as lower-scored results
+                for related_id in related_ids:
+                    if related_id not in seen_ids and related_id in all_memories_dict:
+                        related_memory = all_memories_dict[related_id]
+                        seen_ids.add(related_id)
+                        
+                        # Related memories get 70% of the parent's score
+                        related_score = result.score * 0.7
+                        
+                        relationships = self.knowledge_graph.get_related(related_id)
+                        
+                        expanded_results.append(SearchResult(
+                            memory=related_memory,
+                            score=related_score,
+                            relationships=relationships
+                        ))
+            
+            return expanded_results
+        
+        return top_results
     
     def recall(
         self,

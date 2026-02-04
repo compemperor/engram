@@ -34,6 +34,9 @@ class SearchRequest(BaseModel):
     top_k: int = Field(5, ge=1, le=50, description="Number of results")
     min_quality: Optional[int] = Field(None, ge=1, le=10, description="Minimum quality filter")
     topic_filter: Optional[str] = Field(None, description="Filter by specific topic")
+    use_temporal_weighting: bool = Field(True, description="Apply temporal weighting (recency + importance)")
+    auto_expand_context: bool = Field(False, description="Auto-expand related memories via knowledge graph")
+    expansion_depth: int = Field(1, ge=1, le=3, description="Context expansion depth (1-3)")
 
 
 class EvaluateSessionRequest(BaseModel):
@@ -75,7 +78,7 @@ class RecallSubmitRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.2.7"
+    version="0.4.0"
 )
 
 # Global state (initialized on startup)
@@ -110,8 +113,8 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.3.0",
-        "description": "Memory traces for AI agents with spaced repetition, knowledge graphs, and active recall",
+        "version": "0.4.0",
+        "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
     }
@@ -152,22 +155,32 @@ async def add_lesson(request: AddLessonRequest):
 
 @app.post("/memory/search")
 async def search_memory(request: SearchRequest):
-    """Semantic search across memories"""
+    """
+    Semantic search across memories with v0.4.0 features:
+    - Temporal weighting (boost recent + high-quality memories)
+    - Context-aware retrieval (auto-expand related memories)
+    """
     try:
         results = memory_store.search(
             query=request.query,
             top_k=request.top_k,
             min_quality=request.min_quality,
-            topic_filter=request.topic_filter
+            topic_filter=request.topic_filter,
+            use_temporal_weighting=request.use_temporal_weighting,
+            auto_expand_context=request.auto_expand_context,
+            expansion_depth=request.expansion_depth
         )
         
         return {
             "query": request.query,
             "count": len(results),
+            "temporal_weighting": request.use_temporal_weighting,
+            "context_expansion": request.auto_expand_context,
             "results": [
                 {
                     "memory": r.memory.to_dict(),
-                    "score": r.score
+                    "score": r.score,
+                    "relationships": [rel.to_dict() for rel in r.relationships] if r.relationships else []
                 }
                 for r in results
             ]
