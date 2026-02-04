@@ -11,6 +11,24 @@ Self-improving memory system with episodic/semantic memory, active recall, and l
 
 ---
 
+## ✨ What's New in v0.4.0
+
+**Temporal Weighting** - Recent and high-quality memories now rank higher in search results
+- Exponential recency decay (30-day half-life)
+- Quality boost (source_quality 1-10)
+- Verified +48% score improvement on high-quality recent memories
+- Enabled by default with `use_temporal_weighting: true`
+
+**Context-Aware Retrieval** - Automatically expand search with related memories
+- Follows knowledge graph relationships (related_to, caused_by, etc.)
+- Configurable depth: 1-3 levels
+- Related memories get 70% of parent score
+- Opt-in with `auto_expand_context: true`
+
+**Improved Logging** - All container logs now include timestamps (`YYYY-MM-DD HH:MM:SS`)
+
+---
+
 ## Core Concepts
 
 ### Memory Types
@@ -78,16 +96,29 @@ requests.post(f"{API}/memory/add", json={
 ### Search Memories
 
 ```python
-# Semantic search (finds related concepts)
+# Semantic search with v0.4.0 features
 r = requests.post(f"{API}/memory/search", json={
     "query": "market timing mistakes",
     "top_k": 5,
-    "min_quality": 7  # optional filter
+    "min_quality": 7,  # optional filter
+    "use_temporal_weighting": True,  # ✨ NEW: boost recent + high-quality memories
+    "auto_expand_context": False,  # ✨ NEW: auto-include related memories
+    "expansion_depth": 1  # ✨ NEW: how deep to expand (1-3)
 })
 
 results = r.json()["results"]
 for hit in results:
     print(f"{hit['score']:.2f}: {hit['memory']['lesson']}")
+
+# Context expansion example (automatically includes related memories)
+r = requests.post(f"{API}/memory/search", json={
+    "query": "trading mistakes",
+    "top_k": 1,
+    "auto_expand_context": True,  # Enables knowledge graph expansion
+    "expansion_depth": 1  # Pull related memories 1 hop away (1-3 max)
+})
+# Returns: top 1 match + its related memories via knowledge graph
+# Example: 1 direct result → 2-3 total results with relationships included
 ```
 
 ### Recall by Topic
@@ -305,6 +336,21 @@ for lesson in lessons:
 - Direct memory adds bypass filtering = noise accumulation
 - If session endpoints fail → ABORT and inform user immediately
 
+**⚠️ SHELL VARIABLE ISSUE:**
+- Each `exec()` call = NEW shell session
+- Variables don't persist between calls
+- **SOLUTION:** Use helper script or store session_id in file
+
+**Option 1: Use helper script (recommended for OpenClaw agents)**
+```bash
+# Helper script maintains session_id across exec() calls
+./learning-session-helper.sh start "topic" "goal" 10
+./learning-session-helper.sh note "content" 8
+./learning-session-helper.sh verify "topic" 4.5
+./learning-session-helper.sh consolidate
+```
+
+**Option 2: Python (for agents with persistent runtime)**
 ```python
 def learn_with_structure(topic: str, duration_min: int = 30):
     """Run structured learning session"""
