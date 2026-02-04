@@ -6,7 +6,7 @@ Self-improving memory system with quality control, drift detection, and learning
 
 ---
 
-**🤖 For AI Agents:** See [AGENTS.md](AGENTS.md) for quick integration guide
+**🤖 For AI Agents:** See [Agent Integration](./docs/AGENT_INTEGRATION.md) for quick integration guide
 
 📚 **Documentation:**
 - [Memory Guide](./docs/MEMORY-GUIDE.md) - How to use memory efficiently ⭐
@@ -135,9 +135,9 @@ Three layers working together:
 
 ## Documentation
 
-- **[AGENTS.md](AGENTS.md)** - Quick guide for AI agents
-- **[QUICKSTART.md](QUICKSTART.md)** - 5-minute tutorial
-- **[examples/](examples/)** - Code examples
+- **[docs/AGENT_INTEGRATION.md](./docs/AGENT_INTEGRATION.md)** - Quick guide for AI agents
+- **[docs/QUICKSTART.md](./docs/QUICKSTART.md)** - 5-minute tutorial
+- **[docs/MEMORY-GUIDE.md](./docs/MEMORY-GUIDE.md)** - How to use memory efficiently
 - **[/docs](http://localhost:8765/docs)** - Interactive API docs (when running)
 
 ---
@@ -162,50 +162,12 @@ Three layers working together:
 
 ## Roadmap
 
-### v0.2.x (Completed) ✅
+### v0.7.0+ (Future)
 
-**Episodic vs Semantic Memory**  
-Separate personal experiences from general knowledge. Better organization and targeted retrieval.
-
-**Knowledge Graphs with Auto-Linking**  
-Store relationships between memories (caused_by, related_to, contradicts, supports, example_of, derived_from). Automatic relationship detection using semantic similarity. Query connected memories via `/memory/related/{id}` and create relationships via `POST /memory/relationship`.
-
-**Active Recall**  
-Self-testing features. Quiz mode via `/recall/challenge`, recall tracking. Active learning > passive search.
-
-**Learning Sessions**  
-Structured learning with time tracking, quality filtering (auto-save >= 8), verification checkpoints, and consolidation.
-
-### v0.3.0 ✅ (Released 2026-02-03)
-
-**Spaced Repetition** - Memory review scheduling based on Ebbinghaus forgetting curve
-- ✅ POST /recall/submit - Submit recall attempts
-- ✅ GET /recall/due - Get memories due for review  
-- ✅ Updated GET /recall/challenge - Prioritizes due memories
-
-### v0.4.0 ✅ (Released 2026-02-04)
-
-**Temporal Weighting** - Boost recent + high-quality memories in search results
-- Exponential recency decay (30-day half-life)
-- Quality boost (source_quality 1-10)
-- Combined scoring: `similarity × (1 + recency_factor + quality_factor)`
-- Toggle with `use_temporal_weighting` parameter
-
-**Context-Aware Retrieval** - Auto-expand related memories
-- Leverages knowledge graph relationships
-- Configurable expansion depth (1-3 levels)
-- Related memories get 70% of parent score
-- Toggle with `auto_expand_context` parameter
-
-### v0.5.0 ✅ (Released 2026-02-04)
-
-**E5-base-v2 Embedding Model** - Significantly better semantic search
-- Upgraded from `all-MiniLM-L6-v2` to `intfloat/e5-base-v2`
-- 2x richer representations (768 vs 384 dimensions)
-- Better semantic understanding and nuanced matching
-- Longer context window (512 vs 256 tokens)
-- Improved handling of technical jargon
-- Auto-rebuild FAISS index on dimension mismatch
+- Memory compression (hierarchical summaries)
+- Memory replay (background consolidation)  
+- Meta-learning analytics (optimize over time)
+- Alternative vector DBs (Milvus, Qdrant)
 
 ### v0.6.1 ✅ (Released 2026-02-04)
 
@@ -223,12 +185,27 @@ Structured learning with time tracking, quality filtering (auto-save >= 8), veri
 - Memories fade to "dormant" status (excluded from search, not deleted)
 - Auto-boost on access - searching strengthens memories
 
-### v0.7.0+ (Future)
+### v0.5.0 ✅ (Released 2026-02-04)
 
-- Memory compression (hierarchical summaries)
-- Memory replay (background consolidation)  
-- Meta-learning analytics (optimize over time)
-- Alternative vector DBs (Milvus, Qdrant)
+**E5-base-v2 Embedding Model** - Significantly better semantic search
+- Upgraded from `all-MiniLM-L6-v2` to `intfloat/e5-base-v2`
+- 2x richer representations (768 vs 384 dimensions)
+- Better semantic understanding and nuanced matching
+- Auto-rebuild FAISS index on dimension mismatch
+
+### v0.4.0 ✅ (Released 2026-02-04)
+
+**Temporal Weighting & Context Expansion**
+- Boost recent + high-quality memories in search
+- Auto-expand related memories via knowledge graph
+
+### v0.3.0 ✅ (Released 2026-02-03)
+
+**Spaced Repetition** - Memory review scheduling based on Ebbinghaus forgetting curve
+
+### v0.2.x ✅
+
+**Foundation** - Episodic/semantic memory, knowledge graphs, active recall, learning sessions
 
 
 ## License

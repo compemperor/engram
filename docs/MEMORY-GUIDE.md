@@ -4,6 +4,33 @@
 
 ---
 
+## ⚠️ CRITICAL RULES (from user)
+
+**1. Use Engram ONLY - NO manual markdown files**
+- Learning sessions save automatically when quality >= 8
+- If consolidation returns `consolidate: false` → STOP
+- Do NOT manually save to bypass the filter
+- That's trash that failed quality check - accept it
+
+**2. Quality 8 is MINIMUM**
+- If you can't rate a note 8+, DIG DEEPER
+- Surface-level research = trash
+- Quality 8 = 2+ verified sources, tested, proven
+- Stuck at 6-7? Search more, verify harder, find better sources
+
+**3. Use ENTIRE time span given**
+- User says 10 minutes? Spend FULL 10 minutes
+- Finish in 2 minutes? You didn't dig deep enough
+- Fast ≠ thorough
+- Keep researching until ALL notes are quality 8+
+
+**4. Trust the consolidation filter**
+- If it says no, it means your research was trash
+- No manual saves to bypass
+- Only exception: episodic events (trades, deployments)
+
+---
+
 ## Quick Decision Tree
 
 ```

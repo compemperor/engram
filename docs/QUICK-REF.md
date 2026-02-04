@@ -17,8 +17,6 @@
 │ • Exact topic?        → GET /memory/recall/{topic}      │
 │ • Related to X?       → GET /memory/related/{id}        │
 │ • Test yourself?      → GET /recall/challenge           │
-│ • Submit answer?      → POST /recall/submit             │
-│ • Check reviews due?  → GET /recall/due                 │
 └─────────────────────────────────────────────────────────┘
 ```
 
