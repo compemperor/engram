@@ -162,50 +162,25 @@ Three layers working together:
 
 ## Roadmap
 
-### v0.7.0+ (Future)
+### Future
 
 - Memory compression (hierarchical summaries)
 - Memory replay (background consolidation)  
 - Meta-learning analytics (optimize over time)
 - Alternative vector DBs (Milvus, Qdrant)
 
-### v0.6.1 ✅ (Released 2026-02-04)
+### Current Features
 
-**Sleep Scheduler** - Automatic memory consolidation
-- Background scheduler runs fade cycles every 24 hours
-- Like the brain during sleep - no manual cron needed
-- Graceful startup (5 min delay) and shutdown
-- New endpoint: `/memory/sleep/status`
+- **Memory Fading** - Biologically-inspired forgetting with sleep scheduler
+- **E5-base-v2 Embeddings** - High-quality semantic search
+- **Temporal Weighting** - Boost recent + high-quality memories
+- **Context Expansion** - Auto-expand related memories via knowledge graph
+- **Spaced Repetition** - Memory review scheduling
+- **Episodic/Semantic Memory** - Separate experiences from facts
+- **Knowledge Graphs** - Memory relationships and auto-linking
+- **Learning Sessions** - Structured learning with quality filtering
 
-### v0.6.0 ✅ (Released 2026-02-04)
-
-**Memory Fading** - Biologically-inspired forgetting
-- Strength score based on quality, recall success, access frequency
-- Exponential decay (30-day half-life, configurable)
-- Memories fade to "dormant" status (excluded from search, not deleted)
-- Auto-boost on access - searching strengthens memories
-
-### v0.5.0 ✅ (Released 2026-02-04)
-
-**E5-base-v2 Embedding Model** - Significantly better semantic search
-- Upgraded from `all-MiniLM-L6-v2` to `intfloat/e5-base-v2`
-- 2x richer representations (768 vs 384 dimensions)
-- Better semantic understanding and nuanced matching
-- Auto-rebuild FAISS index on dimension mismatch
-
-### v0.4.0 ✅ (Released 2026-02-04)
-
-**Temporal Weighting & Context Expansion**
-- Boost recent + high-quality memories in search
-- Auto-expand related memories via knowledge graph
-
-### v0.3.0 ✅ (Released 2026-02-03)
-
-**Spaced Repetition** - Memory review scheduling based on Ebbinghaus forgetting curve
-
-### v0.2.x ✅
-
-**Foundation** - Episodic/semantic memory, knowledge graphs, active recall, learning sessions
+See [GitHub Releases](https://github.com/compemperor/engram/releases) for detailed changelog.
 
 
 ## License

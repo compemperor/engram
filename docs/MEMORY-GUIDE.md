@@ -521,5 +521,5 @@ requests.post(f"{API}/memory/add", json=...)
 ---
 
 **Last updated:** 2026-02-03  
-**Engram version:** v0.2.1  
+**System:** Engram Memory API  
 **Status:** Production guidelines

@@ -11,28 +11,25 @@ Self-improving memory system with episodic/semantic memory, active recall, and l
 
 ---
 
-## ✨ What's New in v0.5.x
+## ✨ Key Features
 
-**E5-base-v2 Embedding Model** (v0.5.0) - Significantly better semantic search quality
-- Upgraded from all-MiniLM-L6-v2 (384-dim) to E5-base-v2 (768-dim)
-- **Better semantic understanding** - finds "don't chase FOMO" when searching "avoid emotional trades"
-- Automatic query/passage prefix handling (no manual work needed)
-- Auto-rebuild FAISS index on dimension mismatch
-- 430MB model (one-time download on first startup)
+**E5-base-v2 Embedding Model** - High-quality semantic search
+- 768-dimensional embeddings for nuanced matching
+- Finds "don't chase FOMO" when searching "avoid emotional trades"
+- Automatic query/passage prefix handling
 
-**Bug Fix** (v0.5.1) - `/memory/recall/{topic}` now handles hierarchical topics with slashes (e.g., `identity/soul`)
+**Memory Fading** - Biologically-inspired forgetting
+- Memories have strength scores (quality × recall × access)
+- Unused memories fade to dormant (excluded from search, not deleted)
+- Sleep scheduler runs consolidation automatically every 24h
 
-**Temporal Weighting** (v0.4.0) - Recent and high-quality memories rank higher
+**Temporal Weighting** - Recent and high-quality memories rank higher
 - Exponential recency decay (30-day half-life)
-- Quality boost (source_quality 1-10)
-- **Enabled by default** with `use_temporal_weighting: true`
+- Quality boost based on source_quality (1-10)
 
-**Context-Aware Retrieval** (v0.4.1) - Automatically expand with related memories
-- Follows knowledge graph relationships (related_to, caused_by, etc.)
-- Configurable depth: 1-3 levels
-- **Enabled by default** with `auto_expand_context: true`
-
-**Improved Logging** (v0.4.0) - All logs include timestamps (`YYYY-MM-DD HH:MM:SS`)
+**Context-Aware Retrieval** - Auto-expand related memories
+- Follows knowledge graph relationships
+- Configurable expansion depth (1-3 levels)
 
 ---
 
@@ -94,7 +91,7 @@ requests.post(f"{API}/memory/add", json={
 # Add episodic memory (events/experiences)
 requests.post(f"{API}/memory/add", json={
     "topic": "deployment",
-    "lesson": "Engram v0.2.0 deployed successfully at 11:15 UTC",
+    "lesson": "Engram deployed successfully at 11:15 UTC",
     "source_quality": 8,
     "metadata": {"version": "0.2.0", "duration_min": 5}
 })
@@ -103,7 +100,7 @@ requests.post(f"{API}/memory/add", json={
 ### Search Memories
 
 ```python
-# Semantic search with v0.4.0 features
+# Semantic search with temporal weighting
 r = requests.post(f"{API}/memory/search", json={
     "query": "market timing mistakes",
     "top_k": 5,
@@ -161,7 +158,7 @@ for mem in related:
 
 ### Create Relationships (Knowledge Graph)
 
-**⚡ Auto-Linking (NEW in v0.2.6):**  
+**⚡ Auto-Linking:**  
 Engram automatically creates `related_to` relationships when storing memories! Uses semantic similarity (threshold: 0.75, max: 3 links per memory). Based on spreading activation theory from cognitive science.
 
 ```python

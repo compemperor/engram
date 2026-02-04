@@ -79,7 +79,7 @@ How to integrate Engram with AI agents (Claude Code, OpenCode, LangChain, etc.)
 
 ---
 
-## New in v0.2.0 🚀
+## Memory Types
 
 ### Episodic vs Semantic Memory
 
@@ -216,7 +216,7 @@ curl -X POST http://localhost:8765/learning/session/20260202-203000/verify \
     "applications": ["Can optimize data processing scripts"]
   }'
 
-# Check time status (NEW in v0.2.2)
+# Check time status
 curl http://localhost:8765/learning/session/20260202-203000/time-check
 # Returns elapsed/remaining time, progress %, and whether target reached
 
