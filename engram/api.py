@@ -79,7 +79,7 @@ class RecallSubmitRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.6.0"
+    version="0.6.1"
 )
 
 # Global state (initialized on startup)
@@ -105,6 +105,21 @@ async def startup_event():
     stats = memory_store.get_stats()
     print(f"  Memory: {stats.get('total_memories', 0)} memories")
     print(f"  FAISS: {'enabled' if memory_store.enable_faiss else 'disabled'}")
+    
+    # v0.6.1: Show sleep scheduler status
+    scheduler_status = memory_store.get_scheduler_status()
+    if scheduler_status.get('enabled'):
+        print(f"  Sleep: enabled (every {scheduler_status.get('interval_hours', 24)}h)")
+    else:
+        print(f"  Sleep: disabled")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Gracefully shutdown Engram components"""
+    if memory_store:
+        memory_store.shutdown()
+    print("✓ Engram API stopped")
 
 
 # Health & Info Endpoints
@@ -114,7 +129,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.6.0",
+        "version": "0.6.1",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -713,11 +728,25 @@ async def run_fade_cycle():
     Marks memories below the dormant threshold as dormant,
     and reactivates dormant memories that have been accessed.
     
-    Should be called periodically (e.g., daily via cron).
+    Note: v0.6.1+ runs this automatically via the sleep scheduler.
     """
     try:
         result = memory_store.apply_fade_cycle()
         return {"status": "success", **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/memory/sleep/status")
+async def get_sleep_status():
+    """
+    Get the sleep scheduler status.
+    
+    The sleep scheduler runs fade cycles automatically (like brain during sleep).
+    """
+    try:
+        status = memory_store.get_scheduler_status()
+        return {"status": "success", **status}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

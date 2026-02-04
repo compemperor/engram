@@ -26,6 +26,7 @@ from engram.memory.fade import (
     calculate_strength, should_include_in_search, boost_on_access,
     get_fade_metrics, find_consolidation_candidates, DORMANT_THRESHOLD
 )
+from engram.memory.scheduler import MemoryScheduler
 
 
 class MemoryStore:
@@ -42,7 +43,11 @@ class MemoryStore:
         embedding_model: str = "intfloat/e5-base-v2",  # v0.5.0: Upgraded from all-MiniLM-L6-v2 for better semantic search
         enable_faiss: bool = True,
         auto_link_threshold: float = 0.75,
-        auto_link_max: int = 3
+        auto_link_max: int = 3,
+        # v0.6.1: Sleep scheduler settings
+        enable_sleep_scheduler: bool = True,
+        sleep_interval_hours: float = 24.0,
+        sleep_start_delay_minutes: float = 5.0
     ):
         self.path = Path(path)
         self.path.mkdir(parents=True, exist_ok=True)
@@ -68,6 +73,16 @@ class MemoryStore:
         
         # Load metadata
         self.metadata = self._load_metadata()
+        
+        # v0.6.1: Initialize sleep scheduler (background fade cycles)
+        self.scheduler: Optional[MemoryScheduler] = None
+        if enable_sleep_scheduler:
+            self.scheduler = MemoryScheduler(
+                fade_callback=self.apply_fade_cycle,
+                interval_hours=sleep_interval_hours,
+                start_delay_minutes=sleep_start_delay_minutes
+            )
+            self.scheduler.start()
     
     def add_lesson(
         self,
@@ -250,6 +265,19 @@ class MemoryStore:
             "reactivated": reactivated,
             "timestamp": datetime.utcnow().isoformat()
         }
+    
+    def get_scheduler_status(self) -> Dict[str, Any]:
+        """Get the sleep scheduler status."""
+        if self.scheduler is None:
+            return {"enabled": False, "status": "disabled"}
+        
+        status = self.scheduler.get_status()
+        return {"enabled": True, **status}
+    
+    def shutdown(self) -> None:
+        """Shutdown the memory store gracefully (stops scheduler)."""
+        if self.scheduler:
+            self.scheduler.stop()
     
     def _calculate_temporal_score(
         self,
