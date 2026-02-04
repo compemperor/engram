@@ -3,11 +3,42 @@
 **Repository:** https://github.com/compemperor/engram  
 **API Endpoint:** http://localhost:8765  
 **Container:** engram (auto-restart)  
-**Memory Path:** ~/.openclaw/workspace/memory/
 
 Self-improving memory system with episodic/semantic memory, active recall, and learning sessions.
 
-**📚 For detailed usage guidance:** See [MEMORY-GUIDE.md](./MEMORY-GUIDE.md) - When to use what, efficiency tips, common patterns.
+**📚 For detailed usage guidance:** See [MEMORY-GUIDE.md](./MEMORY-GUIDE.md)
+
+---
+
+## 🔧 OpenClaw Setup
+
+To use Engram as your memory system, replace the default workspace files:
+
+**MEMORY.md** (replace entire file):
+```markdown
+# MEMORY.md
+
+**All memory is in Engram.** This file exists only to tell you that.
+
+## Startup
+1. Search Engram: `curl http://localhost:8765/memory/search -X POST -d '{"query": "startup critical rules"}'`
+2. Load context relevant to current task
+
+## Engram API
+- **Endpoint:** http://localhost:8765
+- **Search:** POST /memory/search
+- **Recall:** GET /memory/recall/{topic}
+- **Store:** POST /memory/add (quality >= 8 only)
+
+That's it. Everything else is in Engram.
+```
+
+**SOUL.md** (add to end or replace startup instruction):
+```markdown
+**FIRST ACTION EVERY SESSION:** Search Engram for "startup critical rules". No exceptions.
+```
+
+**Why:** OpenClaw loads MEMORY.md and SOUL.md each session. By pointing them to Engram, all memory is centralized and searchable.
 
 ---
 
