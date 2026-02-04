@@ -154,9 +154,21 @@ Three layers working together:
 
 ## Inspired By
 
+**Memory & Forgetting**
+- [Ebbinghaus Forgetting Curve](https://en.wikipedia.org/wiki/Forgetting_curve) - Exponential memory decay model
+- [FadeMem (2026)](https://arxiv.org/abs/2504.08000) - Adaptive memory fading for LLMs (45% storage reduction)
+- [Google Titans](https://arxiv.org/abs/2501.00663) - Adaptive weight decay with surprise metrics
+
+**Learning & Recall**
+- [Spaced Repetition](https://en.wikipedia.org/wiki/Spaced_repetition) - Optimal review scheduling
+- [Spreading Activation Theory](https://en.wikipedia.org/wiki/Spreading_activation) - Knowledge graph auto-linking
+
+**Embeddings**
+- [E5-base-v2](https://huggingface.co/intfloat/e5-base-v2) - High-quality text embeddings
+
+**Projects**
 - [Butterfly RSI](https://github.com/ButterflyRSI/Butterfly-RSI) - Drift detection & dream consolidation
 - ICLR 2026 Workshop - Recursive self-improvement research
-- Neuroscience - Memory consolidation during sleep
 
 ---
 
