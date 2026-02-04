@@ -207,10 +207,19 @@ Structured learning with time tracking, quality filtering (auto-save >= 8), veri
 - Improved handling of technical jargon
 - Auto-rebuild FAISS index on dimension mismatch
 
-### v0.6.0+ (Future)
+### v0.6.0 ✅ (Released 2026-02-04)
+
+**Memory Fading** - Biologically-inspired forgetting
+- Strength score based on quality, recall success, access frequency
+- Exponential decay (30-day half-life, configurable)
+- Memories fade to "dormant" status (excluded from search, not deleted)
+- Auto-boost on access - searching strengthens memories
+- Run `/memory/fade/cycle` periodically to update statuses
+
+### v0.7.0+ (Future)
 
 - Memory compression (hierarchical summaries)
-- Memory replay (background consolidation)
+- Memory replay (background consolidation)  
 - Meta-learning analytics (optimize over time)
 - Alternative vector DBs (Milvus, Qdrant)
 
