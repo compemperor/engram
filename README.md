@@ -176,9 +176,11 @@ Three layers working together:
 
 ### Future
 
+- **Reflection phase** - Synthesize memories into higher-level insights (inspired by Generative Agents)
+- **Self-rewarding quality** - LLM-as-Judge for memory quality assessment (inspired by Meta's Self-Rewarding LLMs)
+- **Multi-agent architecture** - Specialized agents for retrieval, consolidation, evaluation (inspired by AutoAgents)
 - Memory compression (hierarchical summaries)
 - Memory replay (background consolidation)  
-- Meta-learning analytics (optimize over time)
 - Alternative vector DBs (Milvus, Qdrant)
 
 ### Current Features
