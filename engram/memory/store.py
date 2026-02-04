@@ -193,7 +193,7 @@ class MemoryStore:
         topic_filter: Optional[str] = None,
         include_relationships: bool = False,  # Include related memories
         use_temporal_weighting: bool = True,  # NEW: temporal weighting
-        auto_expand_context: bool = False,  # NEW: auto-expand related memories
+        auto_expand_context: bool = True,  # NEW: auto-expand related memories (v0.4.1: enabled by default)
         expansion_depth: int = 1  # NEW: how deep to expand
     ) -> List[SearchResult]:
         """

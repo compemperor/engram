@@ -35,7 +35,7 @@ class SearchRequest(BaseModel):
     min_quality: Optional[int] = Field(None, ge=1, le=10, description="Minimum quality filter")
     topic_filter: Optional[str] = Field(None, description="Filter by specific topic")
     use_temporal_weighting: bool = Field(True, description="Apply temporal weighting (recency + importance)")
-    auto_expand_context: bool = Field(False, description="Auto-expand related memories via knowledge graph")
+    auto_expand_context: bool = Field(True, description="Auto-expand related memories via knowledge graph")
     expansion_depth: int = Field(1, ge=1, le=3, description="Context expansion depth (1-3)")
 
 
@@ -78,7 +78,7 @@ class RecallSubmitRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.4.0"
+    version="0.4.1"
 )
 
 # Global state (initialized on startup)
@@ -113,7 +113,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.4.0",
+        "version": "0.4.1",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -690,7 +690,7 @@ def main(host: str = "0.0.0.0", port: int = 8765, reload: bool = False):
                     "datefmt": "%Y-%m-%d %H:%M:%S"
                 },
                 "access": {
-                    "format": "%(asctime)s - %(levelname)s - %(client_addr)s - \"%(request_line)s\" %(status_code)s",
+                    "format": "%(asctime)s - %(levelname)s - %(message)s",
                     "datefmt": "%Y-%m-%d %H:%M:%S"
                 }
             },
