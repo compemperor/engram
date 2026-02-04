@@ -119,7 +119,7 @@ Three layers working together:
 2. **Mirror** - Quality evaluation, drift detection, consolidation decisions
 3. **Learning** - Structured sessions with self-verification checkpoints
 
-**API Server:** FastAPI with 19 REST endpoints, OpenAPI docs
+**API Server:** FastAPI with 27 REST endpoints, interactive docs at `/docs`
 
 ---
 
@@ -144,11 +144,11 @@ Three layers working together:
 
 ## Technology
 
-- **Python 3.11** - Core language
-- **FastAPI + Pydantic** - REST API with validation
-- **sentence-transformers** - Local embeddings (all-MiniLM-L6-v2)
-- **FAISS** - Vector search (CPU-only)
-- **Docker** - One-command deployment
+- **Python 3.11** - Core runtime
+- **FastAPI** - REST API with OpenAPI docs
+- **E5-base-v2** - Local embeddings (768-dim, high-quality semantic search)
+- **FAISS** - Vector similarity search
+- **Docker** - Single container deployment
 
 ---
 
