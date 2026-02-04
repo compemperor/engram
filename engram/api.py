@@ -37,6 +37,7 @@ class SearchRequest(BaseModel):
     use_temporal_weighting: bool = Field(True, description="Apply temporal weighting (recency + importance)")
     auto_expand_context: bool = Field(True, description="Auto-expand related memories via knowledge graph")
     expansion_depth: int = Field(1, ge=1, le=3, description="Context expansion depth (1-3)")
+    include_dormant: bool = Field(False, description="Include dormant (faded) memories in search")
 
 
 class EvaluateSessionRequest(BaseModel):
@@ -78,7 +79,7 @@ class RecallSubmitRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.5.1"
+    version="0.6.0"
 )
 
 # Global state (initialized on startup)
@@ -113,7 +114,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.5.1",
+        "version": "0.6.0",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -168,7 +169,8 @@ async def search_memory(request: SearchRequest):
             topic_filter=request.topic_filter,
             use_temporal_weighting=request.use_temporal_weighting,
             auto_expand_context=request.auto_expand_context,
-            expansion_depth=request.expansion_depth
+            expansion_depth=request.expansion_depth,
+            include_dormant=request.include_dormant
         )
         
         return {
@@ -660,6 +662,62 @@ async def get_recall_stats(memory_id: Optional[str] = None):
             "status": "success",
             "statistics": stats
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# v0.6.0: Memory Fading endpoints
+@app.get("/memory/fade/status")
+async def get_fade_status():
+    """
+    Get fading status for all memories.
+    
+    Shows active, fading, and dormant memory counts with samples.
+    """
+    try:
+        status = memory_store.get_fade_status()
+        return {"status": "success", **status}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/memory/fade/strength/{memory_id}")
+async def get_memory_strength(memory_id: str):
+    """
+    Get the current strength of a specific memory after decay.
+    """
+    try:
+        strength = memory_store.get_memory_strength(memory_id)
+        if strength is None:
+            raise HTTPException(status_code=404, detail="Memory not found")
+        
+        from engram.memory.fade import DORMANT_THRESHOLD
+        return {
+            "status": "success",
+            "memory_id": memory_id,
+            "strength": strength,
+            "is_dormant": strength < DORMANT_THRESHOLD,
+            "dormant_threshold": DORMANT_THRESHOLD
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/memory/fade/cycle")
+async def run_fade_cycle():
+    """
+    Run a fade cycle to update memory statuses.
+    
+    Marks memories below the dormant threshold as dormant,
+    and reactivates dormant memories that have been accessed.
+    
+    Should be called periodically (e.g., daily via cron).
+    """
+    try:
+        result = memory_store.apply_fade_cycle()
+        return {"status": "success", **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

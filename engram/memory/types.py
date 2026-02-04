@@ -48,9 +48,16 @@ class Relationship:
         return asdict(self)
 
 
+class MemoryStatus(str, Enum):
+    """Memory status for fading system"""
+    ACTIVE = "active"  # Normal, included in searches
+    DORMANT = "dormant"  # Faded below threshold, excluded from searches
+    CONSOLIDATED = "consolidated"  # Merged into a summary
+
+
 @dataclass
 class Memory:
-    """Enhanced memory entry with type and entities"""
+    """Enhanced memory entry with type, entities, and fading support"""
     topic: str
     lesson: str
     memory_type: MemoryType  # NEW: episodic or semantic
@@ -64,10 +71,15 @@ class Memory:
     last_recalled: Optional[str] = None  # Last recall timestamp
     next_review: Optional[str] = None  # When to review next (spaced repetition)
     review_success_rate: float = 0.0  # Success rate for this memory (0-1)
+    # v0.6.0: Fading system fields
+    access_count: int = 0  # How many times retrieved in search
+    last_accessed: Optional[str] = None  # Last search retrieval timestamp
+    status: MemoryStatus = MemoryStatus.ACTIVE  # active, dormant, consolidated
     
     def to_dict(self) -> Dict[str, Any]:
         result = asdict(self)
         result['memory_type'] = self.memory_type.value
+        result['status'] = self.status.value if isinstance(self.status, MemoryStatus) else self.status
         return result
 
 

@@ -19,9 +19,13 @@ except ImportError:
     FAISS_AVAILABLE = False
 
 from engram.memory.embeddings import EmbeddingEngine
-from engram.memory.types import Memory, SearchResult, MemoryType, Entity
+from engram.memory.types import Memory, SearchResult, MemoryType, MemoryStatus, Entity
 from engram.memory.graph import KnowledgeGraph
 from engram.memory.recall import ActiveRecallSystem
+from engram.memory.fade import (
+    calculate_strength, should_include_in_search, boost_on_access,
+    get_fade_metrics, find_consolidation_candidates, DORMANT_THRESHOLD
+)
 
 
 class MemoryStore:
@@ -146,6 +150,101 @@ class MemoryStore:
             for m in memories:
                 f.write(json.dumps(m.to_dict()) + "\n")
     
+    # v0.6.0: Fading system methods
+    def _boost_memory_access(self, memory_id: str) -> None:
+        """Boost a memory's access count and timestamp when retrieved."""
+        all_memories = self._load_all_memories()
+        updated = False
+        
+        for memory in all_memories:
+            if memory.memory_id == memory_id:
+                memory.access_count = getattr(memory, 'access_count', 0) + 1
+                memory.last_accessed = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+                updated = True
+                break
+        
+        if updated:
+            self._save_all_memories(all_memories)
+    
+    def get_memory_strength(self, memory_id: str) -> Optional[float]:
+        """Get the current strength of a memory after decay."""
+        all_memories = self._load_all_memories()
+        for memory in all_memories:
+            if memory.memory_id == memory_id:
+                return calculate_strength(memory)
+        return None
+    
+    def get_fade_status(self) -> Dict[str, Any]:
+        """Get fading status across all memories."""
+        all_memories = self._load_all_memories()
+        
+        active = []
+        fading = []
+        dormant = []
+        
+        for memory in all_memories:
+            metrics = get_fade_metrics(memory)
+            entry = {
+                "memory_id": memory.memory_id,
+                "topic": memory.topic,
+                "strength": metrics.strength,
+                "days_since_access": metrics.days_since_access,
+                "action": metrics.recommended_action
+            }
+            
+            if metrics.is_dormant:
+                dormant.append(entry)
+            elif metrics.strength < 0.5:
+                fading.append(entry)
+            else:
+                active.append(entry)
+        
+        return {
+            "total": len(all_memories),
+            "active_count": len(active),
+            "fading_count": len(fading),
+            "dormant_count": len(dormant),
+            "dormant_threshold": DORMANT_THRESHOLD,
+            "active": active[:10],  # Sample
+            "fading": fading[:10],
+            "dormant": dormant[:10]
+        }
+    
+    def apply_fade_cycle(self) -> Dict[str, Any]:
+        """
+        Run a fade cycle: update memory statuses based on current strength.
+        
+        This should be called periodically (e.g., daily) to update statuses.
+        """
+        all_memories = self._load_all_memories()
+        
+        newly_dormant = []
+        reactivated = []
+        
+        for memory in all_memories:
+            metrics = get_fade_metrics(memory)
+            current_status = getattr(memory, 'status', MemoryStatus.ACTIVE)
+            
+            # Handle string status from JSON
+            if isinstance(current_status, str):
+                current_status = MemoryStatus(current_status) if current_status in ['active', 'dormant', 'consolidated'] else MemoryStatus.ACTIVE
+            
+            if metrics.is_dormant and current_status == MemoryStatus.ACTIVE:
+                memory.status = MemoryStatus.DORMANT
+                newly_dormant.append(memory.memory_id)
+            elif not metrics.is_dormant and current_status == MemoryStatus.DORMANT:
+                memory.status = MemoryStatus.ACTIVE
+                reactivated.append(memory.memory_id)
+        
+        if newly_dormant or reactivated:
+            self._save_all_memories(all_memories)
+        
+        return {
+            "newly_dormant": newly_dormant,
+            "reactivated": reactivated,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    
     def _calculate_temporal_score(
         self,
         memory: Memory,
@@ -194,7 +293,8 @@ class MemoryStore:
         include_relationships: bool = False,  # Include related memories
         use_temporal_weighting: bool = True,  # NEW: temporal weighting
         auto_expand_context: bool = True,  # NEW: auto-expand related memories (v0.4.1: enabled by default)
-        expansion_depth: int = 1  # NEW: how deep to expand
+        expansion_depth: int = 1,  # NEW: how deep to expand
+        include_dormant: bool = False  # v0.6.0: include dormant memories
     ) -> List[SearchResult]:
         """
         Enhanced search with:
@@ -242,9 +342,16 @@ class MemoryStore:
             if topic_filter and memory.topic != topic_filter:
                 continue
             
+            # v0.6.0: Filter dormant memories unless explicitly requested
+            if not include_dormant and not should_include_in_search(memory, include_dormant):
+                continue
+            
             if memory.memory_id in seen_ids:
                 continue
             seen_ids.add(memory.memory_id)
+            
+            # v0.6.0: Boost memory on access (updates access_count and last_accessed)
+            self._boost_memory_access(memory.memory_id)
             
             # Base similarity score
             base_similarity = float(1 / (1 + dist))
@@ -481,6 +588,17 @@ class MemoryStore:
                         data["next_review"] = None
                     if "review_success_rate" not in data:
                         data["review_success_rate"] = 0.0
+                    
+                    # v0.6.0: Set defaults for fade fields
+                    if "access_count" not in data:
+                        data["access_count"] = 0
+                    if "last_accessed" not in data:
+                        data["last_accessed"] = None
+                    if "status" not in data:
+                        data["status"] = MemoryStatus.ACTIVE
+                    elif isinstance(data["status"], str):
+                        # Convert string to enum
+                        data["status"] = MemoryStatus(data["status"]) if data["status"] in ['active', 'dormant', 'consolidated'] else MemoryStatus.ACTIVE
                     
                     memories.append(Memory(**data))
                 except Exception as e:
