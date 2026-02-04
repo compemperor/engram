@@ -37,7 +37,9 @@ In `engram/memory/fade.py`:
 | `RECALL_WEIGHT` | 0.3 | Weight of recall success in strength |
 | `ACCESS_WEIGHT` | 0.3 | Weight of access frequency in strength |
 
-## Docker Compose Example
+## Docker Compose (Required Setup)
+
+⚠️ **Volume mount is REQUIRED** to persist data across container restarts.
 
 ```yaml
 services:
@@ -46,11 +48,15 @@ services:
     ports:
       - "8765:8765"
     volumes:
-      - ./memories:/data/memories
+      - ./memories:/data/memories    # REQUIRED: persist memory data
     environment:
-      - MEMORY_PATH=/data/memories
+      - MEMORY_PATH=/data/memories   # Already set in Dockerfile
     restart: unless-stopped
 ```
+
+**Without the volume mount**, all memories are lost when the container restarts!
+
+The `MEMORY_PATH` environment variable is pre-set in the Docker image to `/data/memories`. You just need to mount a host directory to that path.
 
 ## API Configuration
 
