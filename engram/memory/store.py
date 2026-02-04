@@ -150,6 +150,12 @@ class MemoryStore:
             for m in memories:
                 f.write(json.dumps(m.to_dict()) + "\n")
     
+    def _save_all_memories(self, memories: List[Memory]) -> None:
+        """Save all memories to JSONL file."""
+        with open(self.lessons_file, "w") as f:
+            for m in memories:
+                f.write(json.dumps(m.to_dict()) + "\n")
+    
     # v0.6.0: Fading system methods
     def _boost_memory_access(self, memory_id: str) -> None:
         """Boost a memory's access count and timestamp when retrieved."""
