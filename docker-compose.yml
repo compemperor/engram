@@ -6,8 +6,6 @@ services:
       - "8765:8765"
     volumes:
       - ./memories:/data/memories
-    environment:
-      - MEMORY_PATH=/data/memories
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8765/health')"]
