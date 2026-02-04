@@ -279,11 +279,13 @@ class MemoryStore:
         # Context-aware expansion: auto-include related memories
         if auto_expand_context and top_results:
             expanded_results = []
+            expansion_seen_ids = set()  # Separate tracking for expansion to avoid blocking related memories
             all_memories_dict = {m.memory_id: m for m in all_memories}
             
             for result in top_results:
                 # Add the primary result
                 expanded_results.append(result)
+                expansion_seen_ids.add(result.memory.memory_id)
                 
                 # Get related memories through knowledge graph
                 related_ids = self.knowledge_graph.get_connected_memories(
@@ -293,9 +295,9 @@ class MemoryStore:
                 
                 # Add related memories as lower-scored results
                 for related_id in related_ids:
-                    if related_id not in seen_ids and related_id in all_memories_dict:
+                    if related_id not in expansion_seen_ids and related_id in all_memories_dict:
                         related_memory = all_memories_dict[related_id]
-                        seen_ids.add(related_id)
+                        expansion_seen_ids.add(related_id)
                         
                         # Related memories get 70% of the parent's score
                         related_score = result.score * 0.7
