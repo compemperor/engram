@@ -35,7 +35,7 @@ class MemoryStore:
     def __init__(
         self,
         path: str = "./memories",
-        embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
+        embedding_model: str = "intfloat/e5-base-v2",  # v0.5.0: Upgraded from all-MiniLM-L6-v2 for better semantic search
         enable_faiss: bool = True,
         auto_link_threshold: float = 0.75,
         auto_link_max: int = 3
@@ -105,7 +105,7 @@ class MemoryStore:
         
         # Add to FAISS index
         if self.enable_faiss:
-            embedding = self.embedder.encode(lesson)
+            embedding = self.embedder.encode(lesson, is_query=False)  # Document/passage
             embedding_2d = embedding.reshape(1, -1)
             self.index.add(embedding_2d)
             faiss.write_index(self.index, str(self.index_file))
@@ -213,7 +213,7 @@ class MemoryStore:
             return []
         
         # Encode query
-        query_embedding = self.embedder.encode(query)
+        query_embedding = self.embedder.encode(query, is_query=True)  # Query prefix for E5
         query_2d = query_embedding.reshape(1, -1)
         
         # Search FAISS (search ALL, then filter)
@@ -406,12 +406,40 @@ class MemoryStore:
     
     def _load_or_create_index(self):
         """Load or create FAISS index"""
-        dimension = 384  # all-MiniLM-L6-v2 dimension
+        dimension = self.embedder.dimension  # Get dimension from model
         
         if self.index_file.exists():
-            self.index = faiss.read_index(str(self.index_file))
+            try:
+                self.index = faiss.read_index(str(self.index_file))
+                # Verify dimension matches
+                if self.index.d != dimension:
+                    print(f"⚠️  FAISS index dimension mismatch: {self.index.d} != {dimension}")
+                    print("   Rebuilding index with correct dimensions...")
+                    self.index = faiss.IndexFlatL2(dimension)
+                    self._rebuild_index()
+            except Exception as e:
+                print(f"⚠️  Error loading FAISS index: {e}")
+                print("   Creating new index...")
+                self.index = faiss.IndexFlatL2(dimension)
         else:
             self.index = faiss.IndexFlatL2(dimension)
+    
+    def _rebuild_index(self):
+        """Rebuild FAISS index from JSONL memories"""
+        memories = self._load_all_memories()
+        print(f"   Re-embedding {len(memories)} memories...")
+        
+        for i, memory in enumerate(memories):
+            if i % 10 == 0 and i > 0:
+                print(f"   Progress: {i}/{len(memories)}")
+            
+            embedding = self.embedder.encode(memory.lesson, is_query=False)
+            embedding_2d = embedding.reshape(1, -1)
+            self.index.add(embedding_2d)
+        
+        # Save rebuilt index
+        faiss.write_index(self.index, str(self.index_file))
+        print(f"✓ Index rebuilt: {len(memories)} memories indexed")
     
     def _load_all_memories(self) -> List[Memory]:
         """Load all memories from JSONL"""

@@ -44,7 +44,8 @@ class EmbeddingEngine:
     def encode(
         self,
         text: Union[str, List[str]],
-        normalize: bool = True
+        normalize: bool = True,
+        is_query: bool = False
     ) -> np.ndarray:
         """
         Encode text to embedding vector(s).
@@ -52,10 +53,26 @@ class EmbeddingEngine:
         Args:
             text: Single text or list of texts
             normalize: Normalize embeddings to unit length
+            is_query: If True and using E5 model, add "query: " prefix
         
         Returns:
             Embedding vector(s) as numpy array
         """
+        # E5 models require special prefixes
+        if "e5-" in self.model_name.lower():
+            if is_query:
+                # Add "query: " prefix for search queries
+                if isinstance(text, str):
+                    text = f"query: {text}"
+                else:
+                    text = [f"query: {t}" for t in text]
+            else:
+                # Add "passage: " prefix for documents/memories
+                if isinstance(text, str):
+                    text = f"passage: {text}"
+                else:
+                    text = [f"passage: {t}" for t in text]
+        
         embeddings = self.model.encode(
             text,
             normalize_embeddings=normalize,
