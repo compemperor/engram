@@ -1,6 +1,6 @@
 services:
   engram:
-    image: ghcr.io/compemperor/engram:0.6.0
+    image: ghcr.io/compemperor/engram:0.6.1
     container_name: engram
     ports:
       - "8765:8765"
