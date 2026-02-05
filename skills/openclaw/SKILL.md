@@ -297,17 +297,21 @@ print(challenge["question"])  # "What is the key lesson about X?"
 print(challenge["difficulty"])  # "medium"
 
 # After answering, submit your response
-requests.post(f"{API}/recall/submit", json={
-    "challenge_id": challenge["id"],
+r = requests.post(f"{API}/recall/submit", json={
+    "memory_id": challenge["memory_id"],
     "answer": "Your answer here",
     "confidence": 0.8  # 0-1 scale
 })
+result = r.json()
+print(f"Success: {result['success']}, Similarity: {result['similarity']}")
 
 # View recall stats
 r = requests.get(f"{API}/recall/stats")
 stats = r.json()["statistics"]
 print(f"Success rate: {stats['success_rate']*100}%")
 ```
+
+**v0.10.3:** Answers are evaluated using semantic similarity (embeddings), not exact matching. Threshold: 0.75.
 
 ### Reflection Phase (v0.7)
 
