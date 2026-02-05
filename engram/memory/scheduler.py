@@ -32,7 +32,13 @@ class MemoryScheduler:
         get_reflection_candidates_callback: Optional[Callable] = None,
         enable_auto_reflect: bool = True,
         reflect_min_memories: int = 5,
-        reflect_min_days_since_last: int = 7
+        reflect_min_days_since_last: int = 7,
+        # v0.8.1: Auto quality assessment settings
+        quality_assess_callback: Optional[Callable] = None,
+        quality_apply_callback: Optional[Callable] = None,
+        enable_auto_quality: bool = True,
+        quality_assess_limit: int = 15,
+        quality_min_confidence: float = 0.8
     ):
         self.fade_callback = fade_callback
         self.reflect_callback = reflect_callback
@@ -45,11 +51,19 @@ class MemoryScheduler:
         self.reflect_min_memories = reflect_min_memories
         self.reflect_min_days_since_last = reflect_min_days_since_last
         
+        # v0.8.1: Auto quality assessment settings
+        self.quality_assess_callback = quality_assess_callback
+        self.quality_apply_callback = quality_apply_callback
+        self.enable_auto_quality = enable_auto_quality
+        self.quality_assess_limit = quality_assess_limit
+        self.quality_min_confidence = quality_min_confidence
+        
         self._thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self._last_run: Optional[datetime] = None
         self._next_run: Optional[datetime] = None
         self._last_reflection_run: Optional[datetime] = None
+        self._last_quality_run: Optional[datetime] = None
         self._running = False
     
     def start(self) -> None:
@@ -129,12 +143,23 @@ class MemoryScheduler:
                 logger.error(f"🌙 Auto-reflection failed: {e}")
                 # Don't raise - fade cycle succeeded, reflection is optional
         
+        # Phase 3: Auto quality assessment (v0.8.1)
+        quality_result = {"upgraded": [], "downgraded": [], "archived": []}
+        if self.enable_auto_quality and self.quality_assess_callback and self.quality_apply_callback:
+            try:
+                quality_result = self._run_auto_quality_assessment()
+            except Exception as e:
+                logger.error(f"🌙 Auto quality assessment failed: {e}")
+                # Don't raise - earlier phases succeeded
+        
         duration = (datetime.utcnow() - start_time).total_seconds()
+        
+        quality_changes = len(quality_result.get("upgraded", [])) + len(quality_result.get("downgraded", [])) + len(quality_result.get("archived", []))
         
         logger.info(
             f"🌙 Memory sleep cycle complete in {duration:.1f}s: "
             f"{len(newly_dormant)} dormant, {len(reactivated)} reactivated, "
-            f"{len(reflections_created)} reflections"
+            f"{len(reflections_created)} reflections, {quality_changes} quality adjustments"
         )
     
     def _run_auto_reflections(self) -> List[str]:
@@ -175,6 +200,48 @@ class MemoryScheduler:
         self._last_reflection_run = datetime.utcnow()
         return reflected_topics
     
+    def _run_auto_quality_assessment(self) -> Dict[str, List[str]]:
+        """
+        Automatically assess and adjust memory quality.
+        
+        Returns dict with upgraded, downgraded, archived memory IDs.
+        """
+        logger.info(f"🌙 Running quality assessment on up to {self.quality_assess_limit} memories...")
+        
+        # Assess memories (prioritizes those with usage data)
+        assessments = self.quality_assess_callback(
+            limit=self.quality_assess_limit,
+            include_duplicates=True
+        )
+        
+        if not assessments:
+            logger.info("🌙 No memories to assess")
+            return {"upgraded": [], "downgraded": [], "archived": []}
+        
+        # Apply adjustments (only high confidence)
+        result = self.quality_apply_callback(
+            assessments,
+            auto_apply=True,
+            min_confidence=self.quality_min_confidence
+        )
+        
+        upgraded = result.get("upgraded", [])
+        downgraded = result.get("downgraded", [])
+        archived = result.get("archived", [])
+        skipped = result.get("skipped", [])
+        
+        if upgraded or downgraded or archived:
+            logger.info(
+                f"🌙 Quality adjustments applied: "
+                f"{len(upgraded)} upgraded, {len(downgraded)} downgraded, "
+                f"{len(archived)} archived, {len(skipped)} skipped (low confidence)"
+            )
+        else:
+            logger.info(f"🌙 Quality assessment: no changes needed ({len(skipped)} skipped)")
+        
+        self._last_quality_run = datetime.utcnow()
+        return result
+    
     def get_status(self) -> dict:
         """Get scheduler status."""
         return {
@@ -186,7 +253,12 @@ class MemoryScheduler:
             "auto_reflect_enabled": self.enable_auto_reflect,
             "reflect_min_memories": self.reflect_min_memories,
             "reflect_min_days_since_last": self.reflect_min_days_since_last,
-            "last_reflection_run": self._last_reflection_run.isoformat() if self._last_reflection_run else None
+            "last_reflection_run": self._last_reflection_run.isoformat() if self._last_reflection_run else None,
+            # v0.8.1: Auto quality assessment status
+            "auto_quality_enabled": self.enable_auto_quality,
+            "quality_assess_limit": self.quality_assess_limit,
+            "quality_min_confidence": self.quality_min_confidence,
+            "last_quality_run": self._last_quality_run.isoformat() if self._last_quality_run else None
         }
     
     def trigger_now(self) -> dict:

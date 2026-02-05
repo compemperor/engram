@@ -76,6 +76,7 @@ class MemoryStore:
         
         # v0.6.1: Initialize sleep scheduler (background fade cycles)
         # v0.7.1: Added auto-reflection during sleep
+        # v0.8.1: Added auto quality assessment during sleep
         self.scheduler: Optional[MemoryScheduler] = None
         if enable_sleep_scheduler:
             self.scheduler = MemoryScheduler(
@@ -87,7 +88,13 @@ class MemoryStore:
                 get_reflection_candidates_callback=self.get_reflection_candidates,
                 enable_auto_reflect=True,
                 reflect_min_memories=5,
-                reflect_min_days_since_last=7
+                reflect_min_days_since_last=7,
+                # v0.8.1: Auto quality assessment callbacks
+                quality_assess_callback=self.assess_quality,
+                quality_apply_callback=self.apply_quality_adjustments,
+                enable_auto_quality=True,
+                quality_assess_limit=15,
+                quality_min_confidence=0.8
             )
             self.scheduler.start()
     
