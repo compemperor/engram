@@ -86,7 +86,7 @@ class ReflectRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.10.2"
+    version="0.10.3"
 )
 
 # Global state (initialized on startup)
@@ -140,7 +140,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.10.2",
+        "version": "0.10.3",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -660,8 +660,21 @@ async def submit_recall(request: RecallSubmitRequest):
         if not memory:
             raise HTTPException(status_code=404, detail="Memory not found")
         
-        # Simple success check: does answer contain expected topic?
-        success = memory.topic.lower() in request.answer.lower()
+        # v0.10.3: Semantic similarity check using embeddings
+        import numpy as np
+        
+        # Encode answer and lesson
+        answer_embedding = memory_store.embedder.encode(request.answer, is_query=True)
+        lesson_embedding = memory_store.embedder.encode(memory.lesson, is_query=False)
+        
+        # Calculate cosine similarity
+        similarity = np.dot(answer_embedding, lesson_embedding) / (
+            np.linalg.norm(answer_embedding) * np.linalg.norm(lesson_embedding)
+        )
+        
+        # Success if similarity >= 0.75 (tunable - e5 models score high)
+        SIMILARITY_THRESHOLD = 0.75
+        success = float(similarity) >= SIMILARITY_THRESHOLD
         
         # Record attempt (using memory_id as challenge_id for simplicity)
         attempt = memory_store.recall_system.record_attempt(
@@ -696,6 +709,8 @@ async def submit_recall(request: RecallSubmitRequest):
             "status": "success",
             "attempt": attempt.to_dict(),
             "success": success,
+            "similarity": round(float(similarity), 3),
+            "threshold": SIMILARITY_THRESHOLD,
             "next_review": next_review_dt.isoformat()
         }
     except Exception as e:
