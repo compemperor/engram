@@ -14,6 +14,7 @@ class MemoryType(str, Enum):
     """Type of memory"""
     EPISODIC = "episodic"  # Personal experiences, events (when, where, what happened)
     SEMANTIC = "semantic"  # Facts, rules, concepts (general knowledge)
+    REFLECTION = "reflection"  # Synthesized insight from multiple memories
 
 
 class RelationType(str, Enum):
@@ -24,6 +25,7 @@ class RelationType(str, Enum):
     SUPPORTS = "supports"  # A supports B
     EXAMPLE_OF = "example_of"  # A is example of B
     DERIVED_FROM = "derived_from"  # A derived from B
+    SYNTHESIZED_FROM = "synthesized_from"  # A is a reflection synthesized from B
 
 
 @dataclass

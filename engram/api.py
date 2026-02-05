@@ -75,11 +75,18 @@ class RecallSubmitRequest(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in answer (0-1)")
 
 
+class ReflectRequest(BaseModel):
+    topic: str = Field(..., description="Topic to reflect on (e.g., 'trading' or 'trading/risk')")
+    min_quality: Optional[int] = Field(None, ge=1, le=10, description="Minimum source quality filter")
+    min_memories: int = Field(3, ge=2, le=50, description="Minimum memories required for reflection")
+    include_subtopics: bool = Field(True, description="Include memories from subtopics")
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.6.3"
+    version="0.7.0"
 )
 
 # Global state (initialized on startup)
@@ -129,7 +136,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.6.3",
+        "version": "0.7.0",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -747,6 +754,58 @@ async def get_sleep_status():
     try:
         status = memory_store.get_scheduler_status()
         return {"status": "success", **status}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# v0.7.0: Reflection Phase - Synthesize memories into higher-level insights
+
+@app.post("/memory/reflect")
+async def reflect_on_topic(request: ReflectRequest):
+    """
+    Generate a reflection by synthesizing memories on a topic.
+    
+    Inspired by Generative Agents (Park et al.): creates higher-level insights
+    from accumulated memories, stored as a new 'reflection' type memory.
+    
+    Process:
+    1. Gather memories matching the topic
+    2. Group by subtopics and themes
+    3. Synthesize patterns and insights
+    4. Store as reflection memory
+    5. Link back to source memories
+    """
+    try:
+        result = memory_store.reflect(
+            topic=request.topic,
+            min_quality=request.min_quality,
+            min_memories=request.min_memories,
+            include_subtopics=request.include_subtopics
+        )
+        
+        return {
+            "status": "success",
+            **result
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/memory/reflections")
+async def list_reflections(topic: Optional[str] = None):
+    """
+    List all reflection memories, optionally filtered by topic.
+    """
+    try:
+        reflections = memory_store.get_reflections(topic=topic)
+        
+        return {
+            "status": "success",
+            "count": len(reflections),
+            "reflections": [r.to_dict() for r in reflections]
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

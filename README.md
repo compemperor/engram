@@ -176,7 +176,6 @@ Three layers working together:
 
 ### Future
 
-- **Reflection phase** - Synthesize memories into higher-level insights (inspired by Generative Agents)
 - **Self-rewarding quality** - LLM-as-Judge for memory quality assessment (inspired by Meta's Self-Rewarding LLMs)
 - **Multi-agent architecture** - Specialized agents for retrieval, consolidation, evaluation (inspired by AutoAgents)
 - Memory compression (hierarchical summaries)
@@ -185,6 +184,7 @@ Three layers working together:
 
 ### Current Features
 
+- **Reflection Phase** ⭐ NEW - Synthesize memories into higher-level insights (inspired by Generative Agents)
 - **Memory Fading** - Biologically-inspired forgetting with sleep scheduler
 - **E5-base-v2 Embeddings** - High-quality semantic search
 - **Temporal Weighting** - Boost recent + high-quality memories

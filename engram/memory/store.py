@@ -659,6 +659,7 @@ class MemoryStore:
         
         episodic_count = sum(1 for m in memories if m.memory_type == MemoryType.EPISODIC)
         semantic_count = sum(1 for m in memories if m.memory_type == MemoryType.SEMANTIC)
+        reflection_count = sum(1 for m in memories if m.memory_type == MemoryType.REFLECTION)
         
         graph_stats = self.knowledge_graph.get_stats()
         recall_stats = self.recall_system.get_statistics()
@@ -667,6 +668,241 @@ class MemoryStore:
             **self.metadata,
             "episodic_memories": episodic_count,
             "semantic_memories": semantic_count,
+            "reflection_memories": reflection_count,
             "knowledge_graph": graph_stats,
             "recall_stats": recall_stats
         }
+    
+    # v0.7.0: Reflection Phase - Synthesize memories into higher-level insights
+    
+    def reflect(
+        self,
+        topic: str,
+        min_quality: Optional[int] = None,
+        min_memories: int = 3,
+        include_subtopics: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Generate a reflection by synthesizing memories on a topic.
+        
+        Inspired by Generative Agents (Park et al.): creates higher-level insights
+        from accumulated memories.
+        
+        Args:
+            topic: Topic to reflect on (e.g., 'trading' or 'trading/risk')
+            min_quality: Minimum source quality filter
+            min_memories: Minimum memories required for reflection
+            include_subtopics: Include memories from subtopics
+            
+        Returns:
+            Dict with reflection memory and synthesis metadata
+        """
+        from engram.memory.types import RelationType
+        from collections import defaultdict
+        
+        # Gather memories matching the topic
+        all_memories = self._load_all_memories()
+        
+        # Filter by topic (exact match or subtopic)
+        if include_subtopics:
+            matching_memories = [
+                m for m in all_memories
+                if m.topic == topic or m.topic.startswith(f"{topic}/")
+            ]
+        else:
+            matching_memories = [m for m in all_memories if m.topic == topic]
+        
+        # Exclude existing reflections (don't reflect on reflections)
+        matching_memories = [
+            m for m in matching_memories 
+            if m.memory_type != MemoryType.REFLECTION
+        ]
+        
+        # Filter by quality
+        if min_quality:
+            matching_memories = [
+                m for m in matching_memories
+                if m.source_quality and m.source_quality >= min_quality
+            ]
+        
+        # Check minimum threshold
+        if len(matching_memories) < min_memories:
+            raise ValueError(
+                f"Not enough memories for reflection: {len(matching_memories)} found, "
+                f"{min_memories} required. Topic: '{topic}'"
+            )
+        
+        # Group memories by subtopic
+        subtopic_groups = defaultdict(list)
+        for m in matching_memories:
+            subtopic_groups[m.topic].append(m)
+        
+        # Calculate statistics
+        avg_quality = sum(m.source_quality or 5 for m in matching_memories) / len(matching_memories)
+        total_memories = len(matching_memories)
+        
+        # Extract common themes/patterns from lessons
+        themes = self._extract_themes(matching_memories)
+        
+        # Generate synthesis
+        synthesis = self._generate_synthesis(
+            topic=topic,
+            subtopic_groups=dict(subtopic_groups),
+            themes=themes,
+            avg_quality=avg_quality,
+            total_memories=total_memories
+        )
+        
+        # Create reflection memory
+        reflection = self.add_lesson(
+            topic=f"{topic}/reflection",
+            lesson=synthesis,
+            memory_type="reflection",
+            source_quality=min(10, int(avg_quality) + 1),  # Quality bump for synthesis
+            metadata={
+                "reflection_type": "synthesis",
+                "source_topic": topic,
+                "source_count": total_memories,
+                "subtopics": list(subtopic_groups.keys()),
+                "themes": themes[:5],  # Top 5 themes
+                "avg_source_quality": round(avg_quality, 2)
+            }
+        )
+        
+        # Link reflection to source memories
+        source_ids = []
+        for m in matching_memories:
+            try:
+                self.add_relationship(
+                    from_id=reflection.memory_id,
+                    to_id=m.memory_id,
+                    relation_type="synthesized_from",
+                    confidence=0.9
+                )
+                source_ids.append(m.memory_id)
+            except Exception:
+                pass  # Skip if relationship already exists
+        
+        return {
+            "reflection": reflection.to_dict(),
+            "synthesis": synthesis,
+            "source_count": total_memories,
+            "subtopics": list(subtopic_groups.keys()),
+            "themes": themes[:5],
+            "avg_quality": round(avg_quality, 2),
+            "source_memory_ids": source_ids
+        }
+    
+    def _extract_themes(self, memories: List[Memory]) -> List[str]:
+        """
+        Extract common themes from a set of memories.
+        Uses simple word frequency analysis.
+        """
+        from collections import Counter
+        import re
+        
+        # Common words to ignore
+        stopwords = {
+            'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+            'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+            'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'dare',
+            'ought', 'used', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by',
+            'from', 'as', 'into', 'through', 'during', 'before', 'after', 'above',
+            'below', 'between', 'under', 'again', 'further', 'then', 'once', 'here',
+            'there', 'when', 'where', 'why', 'how', 'all', 'each', 'few', 'more',
+            'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own',
+            'same', 'so', 'than', 'too', 'very', 'just', 'and', 'but', 'if', 'or',
+            'because', 'until', 'while', 'this', 'that', 'these', 'those', 'i', 'you',
+            'he', 'she', 'it', 'we', 'they', 'what', 'which', 'who', 'whom'
+        }
+        
+        # Extract words from all lessons
+        word_counts = Counter()
+        for memory in memories:
+            words = re.findall(r'\b[a-zA-Z]{3,}\b', memory.lesson.lower())
+            for word in words:
+                if word not in stopwords:
+                    word_counts[word] += 1
+        
+        # Return top themes (words appearing in multiple memories)
+        themes = [word for word, count in word_counts.most_common(20) if count >= 2]
+        return themes
+    
+    def _generate_synthesis(
+        self,
+        topic: str,
+        subtopic_groups: Dict[str, List[Memory]],
+        themes: List[str],
+        avg_quality: float,
+        total_memories: int
+    ) -> str:
+        """
+        Generate a synthesis text from grouped memories.
+        
+        Creates a structured summary without requiring an LLM.
+        """
+        lines = []
+        
+        # Header
+        lines.append(f"REFLECTION on '{topic}' ({total_memories} memories, avg quality {avg_quality:.1f}/10)")
+        lines.append("")
+        
+        # Themes
+        if themes:
+            lines.append(f"KEY THEMES: {', '.join(themes[:7])}")
+            lines.append("")
+        
+        # Summarize each subtopic
+        for subtopic, memories in sorted(subtopic_groups.items()):
+            if len(memories) == 1:
+                # Single memory - just quote it
+                lines.append(f"• [{subtopic}]: {memories[0].lesson[:200]}")
+            else:
+                # Multiple memories - summarize
+                lines.append(f"• [{subtopic}] ({len(memories)} insights):")
+                
+                # Show top 3 by quality
+                sorted_mems = sorted(
+                    memories,
+                    key=lambda m: m.source_quality or 5,
+                    reverse=True
+                )[:3]
+                
+                for m in sorted_mems:
+                    quality_str = f"[Q{m.source_quality}]" if m.source_quality else ""
+                    lines.append(f"  - {quality_str} {m.lesson[:150]}")
+        
+        lines.append("")
+        lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        
+        return "\n".join(lines)
+    
+    def get_reflections(self, topic: Optional[str] = None) -> List[Memory]:
+        """
+        Get all reflection memories, optionally filtered by topic.
+        
+        Args:
+            topic: Optional topic filter (matches source_topic in metadata)
+            
+        Returns:
+            List of reflection memories
+        """
+        all_memories = self._load_all_memories()
+        
+        # Filter to reflections only
+        reflections = [
+            m for m in all_memories
+            if m.memory_type == MemoryType.REFLECTION
+        ]
+        
+        # Filter by topic if specified
+        if topic:
+            reflections = [
+                m for m in reflections
+                if m.metadata and m.metadata.get("source_topic") == topic
+            ]
+        
+        # Sort by timestamp (newest first)
+        reflections.sort(key=lambda m: m.timestamp, reverse=True)
+        
+        return reflections
