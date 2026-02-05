@@ -174,8 +174,6 @@ Three layers working together:
 
 ### Future
 
-- **Self-rewarding quality** - LLM-as-Judge for memory quality assessment
-- **Multi-agent architecture** - Specialized agents for retrieval, consolidation, evaluation
 - Alternative vector DBs (Milvus, Qdrant)
 
 ### Current Features
