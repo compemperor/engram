@@ -62,6 +62,12 @@ That's it. Everything else is in Engram.
 - Follows knowledge graph relationships
 - Configurable expansion depth (1-3 levels)
 
+**Reflection Phase (v0.7)** - Synthesize memories into insights
+- POST /memory/reflect to consolidate topic memories
+- Auto-runs during sleep cycle (every 24h)
+- Creates "reflection" memory type linked to sources
+- GET /memory/reflect/candidates to see what needs reflection
+
 ---
 
 ## Core Concepts
@@ -270,6 +276,30 @@ r = requests.get(f"{API}/recall/stats")
 stats = r.json()["statistics"]
 print(f"Success rate: {stats['success_rate']*100}%")
 ```
+
+### Reflection Phase (v0.7)
+
+Synthesize multiple memories into higher-level insights:
+
+```python
+# Generate reflection on a topic
+r = requests.post(f"{API}/memory/reflect", json={
+    "topic": "trading",          # Topic to reflect on
+    "min_quality": 7,            # Optional quality filter
+    "min_memories": 3,           # Minimum memories required
+    "include_subtopics": True    # Include trading/risk, etc.
+})
+print(r.json()["synthesis"])
+
+# List all reflections
+r = requests.get(f"{API}/memory/reflections")
+
+# See what topics need reflection
+r = requests.get(f"{API}/memory/reflect/candidates")
+print(r.json()["candidates"])  # ["trading", "projects", ...]
+```
+
+**Auto-reflection:** Sleep scheduler runs reflections every 24h on topics with 5+ memories that haven't been reflected in 7+ days.
 
 ---
 
