@@ -86,7 +86,7 @@ class ReflectRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.7.1"
+    version="0.8.0"
 )
 
 # Global state (initialized on startup)
@@ -136,7 +136,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -831,6 +831,104 @@ async def get_reflection_candidates(
             "status": "success",
             "count": len(candidates),
             "candidates": candidates
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# v0.8.0: Heuristic-based Quality Assessment
+
+@app.get("/memory/quality/{memory_id}")
+async def assess_memory_quality(memory_id: str):
+    """
+    Assess quality of a specific memory using heuristics.
+    
+    No LLM required - uses behavioral signals:
+    - Recall success rate (spaced repetition)
+    - Access frequency
+    - Relationship density
+    - Age resilience
+    """
+    try:
+        assessments = memory_store.assess_quality(memory_id=memory_id)
+        
+        if not assessments:
+            raise HTTPException(status_code=404, detail="Memory not found")
+        
+        return {
+            "status": "success",
+            "assessment": assessments[0]
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/memory/quality/assess")
+async def assess_quality_batch(
+    limit: int = 10,
+    include_duplicates: bool = True
+):
+    """
+    Batch assess memory quality using heuristics.
+    
+    Prioritizes memories with usage data (access/recall activity).
+    Returns quality assessments with suggested actions.
+    """
+    try:
+        assessments = memory_store.assess_quality(
+            limit=limit,
+            include_duplicates=include_duplicates
+        )
+        
+        # Summarize by action
+        actions = {}
+        for a in assessments:
+            action = a["suggested_action"]
+            actions[action] = actions.get(action, 0) + 1
+        
+        return {
+            "status": "success",
+            "count": len(assessments),
+            "summary": actions,
+            "assessments": assessments
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/memory/quality/apply")
+async def apply_quality_adjustments(
+    auto_apply: bool = False,
+    min_confidence: float = 0.7,
+    limit: int = 10
+):
+    """
+    Apply quality adjustments based on heuristic assessments.
+    
+    Args:
+        auto_apply: If True, actually update memory qualities
+        min_confidence: Minimum confidence to apply changes (0-1)
+        limit: Maximum memories to assess
+        
+    Returns:
+        Summary of changes (or proposed changes if auto_apply=False)
+    """
+    try:
+        # First assess
+        assessments = memory_store.assess_quality(limit=limit)
+        
+        # Then apply (or preview)
+        result = memory_store.apply_quality_adjustments(
+            assessments,
+            auto_apply=auto_apply,
+            min_confidence=min_confidence
+        )
+        
+        return {
+            "status": "success",
+            **result
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -981,3 +981,162 @@ class MemoryStore:
         candidates.sort(key=lambda t: topic_counts[t], reverse=True)
         
         return candidates
+    
+    # v0.8.0: Heuristic-based Quality Assessment
+    
+    def assess_quality(
+        self,
+        memory_id: Optional[str] = None,
+        limit: int = 10,
+        include_duplicates: bool = True
+    ) -> List[Dict[str, Any]]:
+        """
+        Assess memory quality using heuristics (no LLM required).
+        
+        Args:
+            memory_id: Specific memory to assess (if None, assess batch)
+            limit: Maximum memories to assess in batch mode
+            include_duplicates: Include duplicate detection (slower)
+            
+        Returns:
+            List of quality assessments
+        """
+        from engram.memory.quality import QualityAssessor, assess_memories_batch
+        
+        all_memories = self._load_all_memories()
+        
+        # Build embeddings dict for duplicate detection
+        embeddings = None
+        if include_duplicates and self.enable_faiss:
+            embeddings = self._get_all_embeddings()
+        
+        if memory_id:
+            # Assess single memory
+            memory = next((m for m in all_memories if m.memory_id == memory_id), None)
+            if not memory:
+                raise ValueError(f"Memory not found: {memory_id}")
+            
+            assessor = QualityAssessor(self.knowledge_graph, self.recall_system)
+            assessment = assessor.assess_memory(memory, all_memories, embeddings)
+            return [assessment.to_dict()]
+        else:
+            # Batch assessment - prioritize memories with usage data
+            scored_memories = []
+            for m in all_memories:
+                # Skip reflections
+                if m.memory_type == MemoryType.REFLECTION:
+                    continue
+                
+                # Prioritize memories with some activity
+                score = (
+                    getattr(m, 'access_count', 0) * 2 +
+                    getattr(m, 'recall_count', 0) * 3
+                )
+                scored_memories.append((score, m))
+            
+            # Sort by activity (most active first for assessment)
+            scored_memories.sort(key=lambda x: x[0], reverse=True)
+            memories_to_assess = [m for _, m in scored_memories[:limit]]
+            
+            assessments = assess_memories_batch(
+                memories_to_assess,
+                self.knowledge_graph,
+                self.recall_system,
+                embeddings,
+                limit
+            )
+            
+            return [a.to_dict() for a in assessments]
+    
+    def apply_quality_adjustments(
+        self,
+        assessments: List[Dict[str, Any]],
+        auto_apply: bool = False,
+        min_confidence: float = 0.7
+    ) -> Dict[str, Any]:
+        """
+        Apply quality adjustments based on assessments.
+        
+        Args:
+            assessments: List of quality assessments
+            auto_apply: If True, automatically update qualities
+            min_confidence: Minimum confidence to apply changes
+            
+        Returns:
+            Summary of changes made
+        """
+        all_memories = self._load_all_memories()
+        memory_dict = {m.memory_id: m for m in all_memories}
+        
+        upgraded = []
+        downgraded = []
+        archived = []
+        skipped = []
+        
+        for assessment in assessments:
+            memory_id = assessment["memory_id"]
+            confidence = assessment["confidence"]
+            action = assessment["suggested_action"]
+            assessed = assessment["assessed_quality"]
+            
+            if confidence < min_confidence:
+                skipped.append(memory_id)
+                continue
+            
+            if memory_id not in memory_dict:
+                continue
+            
+            memory = memory_dict[memory_id]
+            original = memory.source_quality or 5
+            
+            if auto_apply:
+                if action == "upgrade":
+                    memory.source_quality = min(10, int(assessed))
+                    upgraded.append(memory_id)
+                elif action == "downgrade":
+                    memory.source_quality = max(1, int(assessed))
+                    downgraded.append(memory_id)
+                elif action == "archive":
+                    memory.status = MemoryStatus.DORMANT
+                    archived.append(memory_id)
+            else:
+                # Just track what would be changed
+                if action == "upgrade":
+                    upgraded.append(memory_id)
+                elif action == "downgrade":
+                    downgraded.append(memory_id)
+                elif action == "archive":
+                    archived.append(memory_id)
+        
+        if auto_apply and (upgraded or downgraded or archived):
+            self._save_all_memories(all_memories)
+        
+        return {
+            "auto_applied": auto_apply,
+            "upgraded": upgraded,
+            "downgraded": downgraded,
+            "archived": archived,
+            "skipped": skipped,
+            "total_assessed": len(assessments)
+        }
+    
+    def _get_all_embeddings(self) -> Dict[str, Any]:
+        """Get embeddings for all memories (for duplicate detection)."""
+        if not self.enable_faiss:
+            return {}
+        
+        try:
+            import numpy as np
+            
+            all_memories = self._load_all_memories()
+            embeddings = {}
+            
+            # Rebuild embeddings from FAISS index
+            # Note: This assumes index order matches memory order
+            for i, memory in enumerate(all_memories):
+                if i < self.index.ntotal:
+                    embeddings[memory.memory_id] = self.index.reconstruct(i)
+            
+            return embeddings
+        except Exception:
+            return {}

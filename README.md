@@ -184,7 +184,8 @@ Three layers working together:
 
 ### Current Features
 
-- **Reflection Phase** ⭐ NEW - Synthesize memories into higher-level insights (inspired by Generative Agents)
+- **Heuristic Quality Assessment** ⭐ NEW - Auto-evaluate memory quality without LLM (usage patterns)
+- **Reflection Phase** - Synthesize memories into higher-level insights (inspired by Generative Agents)
 - **Auto-Reflection** - Sleep scheduler automatically reflects on topics every 24h
 - **Memory Fading** - Biologically-inspired forgetting with sleep scheduler
 - **E5-base-v2 Embeddings** - High-quality semantic search
