@@ -70,6 +70,9 @@ That's it. Everything else is in Engram.
 **Reflection Phase (v0.7)** - Synthesize memories into insights
 - POST /memory/reflect to consolidate topic memories
 - Auto-runs during sleep cycle (every 24h)
+
+**Configurable Embedding Model (v0.9)** - ENGRAM_EMBEDDING_MODEL env var
+- Options: e5-base-v2 (default), e5-large-v2, multilingual-e5-large
 - Creates "reflection" memory type linked to sources
 - GET /memory/reflect/candidates to see what needs reflection
 

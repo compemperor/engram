@@ -128,3 +128,16 @@ r = requests.post(f"{API}/memory/quality/assess?limit=10")
 r = requests.post(f"{API}/memory/quality/apply?auto_apply=true")
 ```
 
+
+### Embedding Model (v0.9)
+
+Configure via environment variable:
+```yaml
+environment:
+  - ENGRAM_EMBEDDING_MODEL=intfloat/e5-large-v2
+```
+
+Options:
+- `intfloat/e5-base-v2` (768 dims, default)
+- `intfloat/e5-large-v2` (1024 dims, better quality)
+- `intfloat/multilingual-e5-large` (1024 dims, multi-language)
