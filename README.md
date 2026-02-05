@@ -115,11 +115,9 @@ print(r.json()["results"])
 
 Three layers working together:
 
-1. **Memory** - Local embeddings (sentence-transformers) + FAISS vector search
-2. **Mirror** - Quality evaluation, drift detection, consolidation decisions
-3. **Learning** - Structured sessions with self-verification checkpoints
-
-**API Server:** FastAPI with 27 REST endpoints, interactive docs at `/docs`
+1. **Memory** - Local embeddings (E5) + FAISS vector search
+2. **Mirror** - Quality evaluation, drift detection, consolidation
+3. **Learning** - Structured sessions with self-verification
 
 ---
 
@@ -176,10 +174,8 @@ Three layers working together:
 
 ### Future
 
-- **Self-rewarding quality** - LLM-as-Judge for memory quality assessment (inspired by Meta's Self-Rewarding LLMs)
-- **Multi-agent architecture** - Specialized agents for retrieval, consolidation, evaluation (inspired by AutoAgents)
-- Memory compression (hierarchical summaries)
-- Memory replay (background consolidation)  
+- **Self-rewarding quality** - LLM-as-Judge for memory quality assessment
+- **Multi-agent architecture** - Specialized agents for retrieval, consolidation, evaluation
 - Alternative vector DBs (Milvus, Qdrant)
 
 ### Current Features
