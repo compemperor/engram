@@ -695,3 +695,7 @@ GET /recall/stats - Get recall statistics
 ```
 
 **Remember:** Quality >= 8 auto-saves. Use learning sessions for important work. Always recall lessons before tasks.
+
+**Memory Compression & Replay (v0.10)** - Brain-inspired consolidation
+- Merge similar memories automatically
+- Replay at-risk memories to strengthen retention

@@ -141,3 +141,19 @@ Options:
 - `intfloat/e5-base-v2` (768 dims, default)
 - `intfloat/e5-large-v2` (1024 dims, better quality)
 - `intfloat/multilingual-e5-large` (1024 dims, multi-language)
+
+### Compression & Replay (v0.10)
+
+```python
+# Find compression candidates
+r = requests.get(f"{API}/memory/compression/candidates?limit=5")
+
+# Apply compression
+r = requests.post(f"{API}/memory/compression/apply?auto_apply=true")
+
+# Get replay candidates
+r = requests.get(f"{API}/memory/replay/candidates?limit=10")
+
+# Replay memories
+r = requests.post(f"{API}/memory/replay?limit=20")
+```

@@ -81,3 +81,19 @@ The API runs on port `8765` by default. Change via:
 ```bash
 python -m engram --host 0.0.0.0 --port 8765
 ```
+
+## Sleep Scheduler Configuration (v0.10.0)
+
+The sleep scheduler runs these phases automatically every 24h:
+
+| Phase | Description | Setting |
+|-------|-------------|---------|
+| Fade | Mark unused memories dormant | Always enabled |
+| Reflection | Synthesize insights | `auto_reflect_enabled` |
+| Quality | Adjust quality scores | `auto_quality_enabled` |
+| Compression | Merge similar memories | `compression_enabled` |
+| Replay | Strengthen at-risk memories | `replay_enabled` |
+
+Default limits:
+- `compression_limit`: 5 groups per cycle
+- `replay_limit`: 20 memories per cycle
