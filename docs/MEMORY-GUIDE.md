@@ -49,6 +49,12 @@ Learning something new?
 ├─ Short (<5 min)? → Just add memories directly
 ├─ Medium (5-15 min)? → Learning session (auto-saves)
 └─ Long (15+ min)? → Learning session + verify
+
+Want to synthesize insights? (v0.7)
+├─ Have 3+ memories on a topic? → /memory/reflect
+├─ Want meta-level understanding? → Reflection phase
+├─ What needs reflection? → /memory/reflect/candidates
+└─ Auto-reflection runs every 24h during sleep cycle
 ```
 
 ---

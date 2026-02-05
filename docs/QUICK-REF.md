@@ -18,6 +18,12 @@
 │ • Related to X?       → GET /memory/related/{id}        │
 │ • Test yourself?      → GET /recall/challenge           │
 └─────────────────────────────────────────────────────────┘
+
+┌─ Need SYNTHESIS? (v0.7) ────────────────────────────────┐
+│ • Consolidate topic?  → POST /memory/reflect            │
+│ • List insights?      → GET /memory/reflections         │
+│ • What needs reflect? → GET /memory/reflect/candidates  │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ## Common Commands
@@ -38,6 +44,14 @@ curl http://localhost:8765/memory/recall/trading?min_quality=7
 
 # Get related memories
 curl http://localhost:8765/memory/related/{memory_id}
+
+# Reflect on topic (v0.7)
+curl -X POST http://localhost:8765/memory/reflect \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "trading", "min_quality": 7}'
+
+# List reflections
+curl http://localhost:8765/memory/reflections
 
 # Stats
 curl http://localhost:8765/memory/stats

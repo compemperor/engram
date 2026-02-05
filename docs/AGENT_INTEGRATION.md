@@ -138,6 +138,31 @@ GET /recall/stats?memory_id=abc123
 - Track learning progress
 - Active > passive learning
 
+### Reflection Phase (v0.7)
+
+**Synthesize memories into higher-level insights** - Like the brain during sleep, consolidate learnings into meta-knowledge.
+
+**Usage:**
+```python
+# Generate reflection on a topic
+POST /memory/reflect
+{"topic": "trading", "min_quality": 7, "min_memories": 3}
+
+# List all reflections
+GET /memory/reflections
+
+# See what topics need reflection
+GET /memory/reflect/candidates
+```
+
+**Benefits:**
+- Emergent insights from accumulated knowledge
+- Pattern discovery across related memories
+- Auto-runs during sleep cycle (every 24h)
+- Creates "reflection" memory type linked to sources
+
+**Auto-reflection:** Sleep scheduler runs reflections automatically on topics with 5+ memories that haven't been reflected in 7+ days.
+
 ---
 
 ## Overview
