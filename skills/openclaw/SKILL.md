@@ -270,6 +270,20 @@ result = r.json()
 print(f"Before: {result['before']}, After: {result['after']}")
 ```
 
+### Archive Memory (v0.10.2+)
+
+Archive (soft-delete) memories - they're excluded from search/recall but remain in storage:
+
+```python
+# Archive a memory
+r = requests.post(f"{API}/memory/archive/{memory_id}")
+print(r.json())  # {"status": "success", "archived": true, ...}
+
+# List all archived memories
+r = requests.get(f"{API}/memory/archived")
+print(f"Archived: {r.json()['count']} memories")
+```
+
 ### Active Recall
 
 Engram can quiz you on memories to strengthen retention:

@@ -58,6 +58,12 @@ curl http://localhost:8765/memory/stats
 
 # Sync metadata (fix count drift)
 curl -X POST http://localhost:8765/memory/sync
+
+# Archive a memory
+curl -X POST http://localhost:8765/memory/archive/{memory_id}
+
+# List archived memories
+curl http://localhost:8765/memory/archived
 ```
 
 ## Quality Scale

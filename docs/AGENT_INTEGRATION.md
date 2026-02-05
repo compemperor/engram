@@ -736,6 +736,12 @@ curl http://localhost:8765/memory/stats
 # Sync metadata (fix count drift) - v0.10.1+
 curl -X POST http://localhost:8765/memory/sync
 
+# Archive a memory - v0.10.2+
+curl -X POST http://localhost:8765/memory/archive/{memory_id}
+
+# List archived memories - v0.10.2+
+curl http://localhost:8765/memory/archived
+
 # Rebuild index if needed
 curl -X POST http://localhost:8765/memory/rebuild-index
 ```
