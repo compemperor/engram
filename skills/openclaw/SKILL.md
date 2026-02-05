@@ -260,6 +260,16 @@ print(f"Semantic: {stats['semantic_memories']}")
 print(f"Topics: {stats['topics']}")
 ```
 
+### Sync Metadata (v0.10.1+)
+
+If metadata counts drift from actual storage, sync them:
+
+```python
+r = requests.post(f"{API}/memory/sync")
+result = r.json()
+print(f"Before: {result['before']}, After: {result['after']}")
+```
+
 ### Active Recall
 
 Engram can quiz you on memories to strengthen retention:

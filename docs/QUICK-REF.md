@@ -55,6 +55,9 @@ curl http://localhost:8765/memory/reflections
 
 # Stats
 curl http://localhost:8765/memory/stats
+
+# Sync metadata (fix count drift)
+curl -X POST http://localhost:8765/memory/sync
 ```
 
 ## Quality Scale

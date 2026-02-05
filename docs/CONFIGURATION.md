@@ -63,7 +63,7 @@ services:
     ports:
       - "8765:8765"
     volumes:
-      - ./memories:/data/memories    # REQUIRED: persist memory data
+      - ${HOME}/.openclaw/engram-data:/data/memories    # REQUIRED: persist memory data (keep outside git repos!)
     environment:
       # Optional: upgrade to better embeddings (v0.9.0)
       - ENGRAM_EMBEDDING_MODEL=intfloat/e5-large-v2

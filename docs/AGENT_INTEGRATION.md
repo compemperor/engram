@@ -733,6 +733,9 @@ docker-compose up -d engram
 # Check memory stats
 curl http://localhost:8765/memory/stats
 
+# Sync metadata (fix count drift) - v0.10.1+
+curl -X POST http://localhost:8765/memory/sync
+
 # Rebuild index if needed
 curl -X POST http://localhost:8765/memory/rebuild-index
 ```
