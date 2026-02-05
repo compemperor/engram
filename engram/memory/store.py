@@ -77,6 +77,7 @@ class MemoryStore:
         # v0.6.1: Initialize sleep scheduler (background fade cycles)
         # v0.7.1: Added auto-reflection during sleep
         # v0.8.1: Added auto quality assessment during sleep
+        # v0.10.0: Added compression and replay during sleep
         self.scheduler: Optional[MemoryScheduler] = None
         if enable_sleep_scheduler:
             self.scheduler = MemoryScheduler(
@@ -94,7 +95,15 @@ class MemoryStore:
                 quality_apply_callback=self.apply_quality_adjustments,
                 enable_auto_quality=True,
                 quality_assess_limit=15,
-                quality_min_confidence=0.8
+                quality_min_confidence=0.8,
+                # v0.10.0: Compression and replay callbacks
+                compression_candidates_callback=self.find_compression_candidates,
+                compression_apply_callback=self.compress_memories,
+                replay_callback=self.replay_memories,
+                enable_compression=True,
+                enable_replay=True,
+                compression_limit=5,
+                replay_limit=20
             )
             self.scheduler.start()
     
@@ -1147,3 +1156,180 @@ class MemoryStore:
             return embeddings
         except Exception:
             return {}
+    
+    # v0.10.0: Memory Compression and Replay
+    
+    def find_compression_candidates(
+        self,
+        limit: int = 10,
+        similarity_threshold: float = 0.88
+    ) -> List[Dict[str, Any]]:
+        """
+        Find groups of similar memories that could be compressed.
+        
+        Args:
+            limit: Max candidate groups to return
+            similarity_threshold: Minimum similarity to consider for merging
+            
+        Returns:
+            List of compression candidates with merge suggestions
+        """
+        from engram.memory.compression import MemoryCompressor
+        
+        all_memories = self._load_all_memories()
+        embeddings = self._get_all_embeddings()
+        
+        compressor = MemoryCompressor(similarity_threshold=similarity_threshold)
+        candidates = compressor.find_compression_candidates(all_memories, embeddings, limit)
+        
+        return [
+            {
+                "primary_id": c.primary_id,
+                "merge_ids": c.merge_ids,
+                "similarity_scores": c.similarity_scores,
+                "topic": c.topic,
+                "combined_lesson": c.combined_lesson,
+                "reason": c.reason
+            }
+            for c in candidates
+        ]
+    
+    def compress_memories(
+        self,
+        candidates: List[Dict[str, Any]],
+        auto_apply: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Compress memory groups by merging into primary and archiving others.
+        
+        Args:
+            candidates: List of compression candidates from find_compression_candidates
+            auto_apply: If True, actually perform the compression
+            
+        Returns:
+            Summary of compression results
+        """
+        all_memories = self._load_all_memories()
+        memory_dict = {m.memory_id: m for m in all_memories}
+        
+        compressed = []
+        archived = []
+        
+        for candidate in candidates:
+            primary_id = candidate["primary_id"]
+            merge_ids = candidate["merge_ids"]
+            combined_lesson = candidate["combined_lesson"]
+            
+            if primary_id not in memory_dict:
+                continue
+            
+            primary = memory_dict[primary_id]
+            
+            if auto_apply:
+                # Update primary with combined lesson
+                primary.lesson = combined_lesson
+                
+                # Boost quality (compression = curation = value)
+                if primary.source_quality:
+                    primary.source_quality = min(10, primary.source_quality + 1)
+                
+                # Archive merged memories
+                for merge_id in merge_ids:
+                    if merge_id in memory_dict:
+                        memory_dict[merge_id].status = MemoryStatus.DORMANT
+                        # Add link to primary
+                        if hasattr(memory_dict[merge_id], 'metadata') and memory_dict[merge_id].metadata:
+                            memory_dict[merge_id].metadata['compressed_into'] = primary_id
+                        archived.append(merge_id)
+                
+                compressed.append(primary_id)
+        
+        if auto_apply and (compressed or archived):
+            self._save_all_memories(all_memories)
+        
+        return {
+            "auto_applied": auto_apply,
+            "compressed": compressed,
+            "archived": archived,
+            "total_candidates": len(candidates)
+        }
+    
+    def select_for_replay(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """
+        Select memories for replay (strengthening during sleep).
+        
+        Prioritizes high-quality memories at risk of decay.
+        
+        Args:
+            limit: Max memories to select
+            
+        Returns:
+            List of memories selected for replay
+        """
+        from engram.memory.compression import MemoryReplayer
+        
+        all_memories = self._load_all_memories()
+        replayer = MemoryReplayer(max_replays_per_cycle=limit)
+        selected = replayer.select_for_replay(all_memories, limit)
+        
+        return [
+            {
+                "memory_id": m.memory_id,
+                "topic": m.topic,
+                "quality": getattr(m, 'source_quality', 5),
+                "strength": getattr(m, 'strength', 1.0),
+                "access_count": getattr(m, 'access_count', 0)
+            }
+            for m in selected
+        ]
+    
+    def replay_memories(
+        self,
+        memory_ids: Optional[List[str]] = None,
+        limit: int = 20
+    ) -> Dict[str, Any]:
+        """
+        Replay memories to strengthen retention.
+        
+        Args:
+            memory_ids: Specific memories to replay (if None, auto-select)
+            limit: Max memories to replay
+            
+        Returns:
+            Summary of replay results
+        """
+        from engram.memory.compression import MemoryReplayer
+        
+        all_memories = self._load_all_memories()
+        memory_dict = {m.memory_id: m for m in all_memories}
+        
+        replayer = MemoryReplayer(max_replays_per_cycle=limit)
+        
+        # Select memories to replay
+        if memory_ids:
+            to_replay = [memory_dict[mid] for mid in memory_ids if mid in memory_dict]
+        else:
+            to_replay = replayer.select_for_replay(all_memories, limit)
+        
+        replayed = []
+        for memory in to_replay:
+            changes = replayer.replay_memory(memory)
+            
+            # Apply changes
+            memory.strength = changes["new_strength"]
+            memory.access_count = changes["access_count"]
+            memory.last_accessed = datetime.utcnow().isoformat()
+            
+            replayed.append({
+                "memory_id": memory.memory_id,
+                "topic": memory.topic,
+                "strength_boost": changes["new_strength"] - changes["old_strength"]
+            })
+        
+        if replayed:
+            self._save_all_memories(all_memories)
+        
+        return {
+            "replayed_count": len(replayed),
+            "replayed": replayed
+        }

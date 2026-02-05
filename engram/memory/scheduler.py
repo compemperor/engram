@@ -38,7 +38,15 @@ class MemoryScheduler:
         quality_apply_callback: Optional[Callable] = None,
         enable_auto_quality: bool = True,
         quality_assess_limit: int = 15,
-        quality_min_confidence: float = 0.8
+        quality_min_confidence: float = 0.8,
+        # v0.10.0: Compression and replay settings
+        compression_candidates_callback: Optional[Callable] = None,
+        compression_apply_callback: Optional[Callable] = None,
+        replay_callback: Optional[Callable] = None,
+        enable_compression: bool = True,
+        enable_replay: bool = True,
+        compression_limit: int = 5,
+        replay_limit: int = 20
     ):
         self.fade_callback = fade_callback
         self.reflect_callback = reflect_callback
@@ -58,12 +66,23 @@ class MemoryScheduler:
         self.quality_assess_limit = quality_assess_limit
         self.quality_min_confidence = quality_min_confidence
         
+        # v0.10.0: Compression and replay settings
+        self.compression_candidates_callback = compression_candidates_callback
+        self.compression_apply_callback = compression_apply_callback
+        self.replay_callback = replay_callback
+        self.enable_compression = enable_compression
+        self.enable_replay = enable_replay
+        self.compression_limit = compression_limit
+        self.replay_limit = replay_limit
+        
         self._thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self._last_run: Optional[datetime] = None
         self._next_run: Optional[datetime] = None
         self._last_reflection_run: Optional[datetime] = None
         self._last_quality_run: Optional[datetime] = None
+        self._last_compression_run: Optional[datetime] = None
+        self._last_replay_run: Optional[datetime] = None
         self._running = False
     
     def start(self) -> None:
@@ -152,14 +171,33 @@ class MemoryScheduler:
                 logger.error(f"🌙 Auto quality assessment failed: {e}")
                 # Don't raise - earlier phases succeeded
         
+        # Phase 4: Memory compression (v0.10.0)
+        compression_result = {"compressed": [], "archived": []}
+        if self.enable_compression and self.compression_candidates_callback and self.compression_apply_callback:
+            try:
+                compression_result = self._run_auto_compression()
+            except Exception as e:
+                logger.error(f"🌙 Auto compression failed: {e}")
+        
+        # Phase 5: Memory replay (v0.10.0)
+        replay_result = {"replayed_count": 0}
+        if self.enable_replay and self.replay_callback:
+            try:
+                replay_result = self._run_auto_replay()
+            except Exception as e:
+                logger.error(f"🌙 Auto replay failed: {e}")
+        
         duration = (datetime.utcnow() - start_time).total_seconds()
         
         quality_changes = len(quality_result.get("upgraded", [])) + len(quality_result.get("downgraded", [])) + len(quality_result.get("archived", []))
+        compression_count = len(compression_result.get("compressed", []))
+        replay_count = replay_result.get("replayed_count", 0)
         
         logger.info(
             f"🌙 Memory sleep cycle complete in {duration:.1f}s: "
             f"{len(newly_dormant)} dormant, {len(reactivated)} reactivated, "
-            f"{len(reflections_created)} reflections, {quality_changes} quality adjustments"
+            f"{len(reflections_created)} reflections, {quality_changes} quality adj, "
+            f"{compression_count} compressed, {replay_count} replayed"
         )
     
     def _run_auto_reflections(self) -> List[str]:
@@ -242,6 +280,58 @@ class MemoryScheduler:
         self._last_quality_run = datetime.utcnow()
         return result
     
+    def _run_auto_compression(self) -> Dict[str, List[str]]:
+        """
+        Automatically compress similar memories.
+        
+        Returns dict with compressed and archived memory IDs.
+        """
+        logger.info(f"🌙 Looking for compression candidates (limit {self.compression_limit})...")
+        
+        # Find candidates
+        candidates = self.compression_candidates_callback(limit=self.compression_limit)
+        
+        if not candidates:
+            logger.info("🌙 No compression candidates found")
+            return {"compressed": [], "archived": []}
+        
+        logger.info(f"🌙 Found {len(candidates)} compression candidates")
+        
+        # Apply compression
+        result = self.compression_apply_callback(candidates, auto_apply=True)
+        
+        compressed = result.get("compressed", [])
+        archived = result.get("archived", [])
+        
+        if compressed:
+            logger.info(
+                f"🌙 Compression applied: "
+                f"{len(compressed)} memories compressed, {len(archived)} archived"
+            )
+        
+        self._last_compression_run = datetime.utcnow()
+        return result
+    
+    def _run_auto_replay(self) -> Dict[str, Any]:
+        """
+        Automatically replay memories to strengthen retention.
+        
+        Returns dict with replay results.
+        """
+        logger.info(f"🌙 Replaying up to {self.replay_limit} memories...")
+        
+        result = self.replay_callback(limit=self.replay_limit)
+        
+        replayed_count = result.get("replayed_count", 0)
+        
+        if replayed_count > 0:
+            logger.info(f"🌙 Replayed {replayed_count} memories (strengthened retention)")
+        else:
+            logger.info("🌙 No memories needed replay")
+        
+        self._last_replay_run = datetime.utcnow()
+        return result
+    
     def get_status(self) -> dict:
         """Get scheduler status."""
         return {
@@ -258,7 +348,14 @@ class MemoryScheduler:
             "auto_quality_enabled": self.enable_auto_quality,
             "quality_assess_limit": self.quality_assess_limit,
             "quality_min_confidence": self.quality_min_confidence,
-            "last_quality_run": self._last_quality_run.isoformat() if self._last_quality_run else None
+            "last_quality_run": self._last_quality_run.isoformat() if self._last_quality_run else None,
+            # v0.10.0: Compression and replay status
+            "compression_enabled": self.enable_compression,
+            "compression_limit": self.compression_limit,
+            "last_compression_run": self._last_compression_run.isoformat() if self._last_compression_run else None,
+            "replay_enabled": self.enable_replay,
+            "replay_limit": self.replay_limit,
+            "last_replay_run": self._last_replay_run.isoformat() if self._last_replay_run else None
         }
     
     def trigger_now(self) -> dict:

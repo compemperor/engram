@@ -86,7 +86,7 @@ class ReflectRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.9.0"
+    version="0.10.0"
 )
 
 # Global state (initialized on startup)
@@ -140,7 +140,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.9.0",
+        "version": "0.10.0",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -928,6 +928,135 @@ async def apply_quality_adjustments(
             assessments,
             auto_apply=auto_apply,
             min_confidence=min_confidence
+        )
+        
+        return {
+            "status": "success",
+            **result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# v0.10.0: Memory Compression and Replay
+
+@app.get("/memory/compression/candidates")
+async def get_compression_candidates(
+    limit: int = 10,
+    similarity_threshold: float = 0.88
+):
+    """
+    Find groups of similar memories that could be compressed.
+    
+    Args:
+        limit: Maximum candidate groups to return
+        similarity_threshold: Minimum similarity to consider (0.8-0.95 recommended)
+        
+    Returns:
+        List of compression candidates with merge suggestions
+    """
+    try:
+        candidates = memory_store.find_compression_candidates(
+            limit=limit,
+            similarity_threshold=similarity_threshold
+        )
+        
+        return {
+            "status": "success",
+            "count": len(candidates),
+            "candidates": candidates
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/memory/compression/apply")
+async def apply_compression(
+    auto_apply: bool = False,
+    limit: int = 10,
+    similarity_threshold: float = 0.88
+):
+    """
+    Compress similar memories by merging and archiving.
+    
+    Args:
+        auto_apply: If True, actually perform compression
+        limit: Maximum groups to compress
+        similarity_threshold: Minimum similarity threshold
+        
+    Returns:
+        Summary of compression results
+    """
+    try:
+        # Find candidates
+        candidates = memory_store.find_compression_candidates(
+            limit=limit,
+            similarity_threshold=similarity_threshold
+        )
+        
+        if not candidates:
+            return {
+                "status": "success",
+                "message": "No compression candidates found",
+                "compressed": [],
+                "archived": []
+            }
+        
+        # Apply compression
+        result = memory_store.compress_memories(
+            candidates,
+            auto_apply=auto_apply
+        )
+        
+        return {
+            "status": "success",
+            **result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/memory/replay/candidates")
+async def get_replay_candidates(limit: int = 20):
+    """
+    Get memories selected for replay (strengthening).
+    
+    Prioritizes high-quality memories at risk of decay.
+    """
+    try:
+        candidates = memory_store.select_for_replay(limit=limit)
+        
+        return {
+            "status": "success",
+            "count": len(candidates),
+            "candidates": candidates
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/memory/replay")
+async def replay_memories(
+    memory_ids: Optional[List[str]] = None,
+    limit: int = 20
+):
+    """
+    Replay memories to strengthen retention.
+    
+    Like hippocampal replay during sleep - strengthens important
+    memories by simulating retrieval.
+    
+    Args:
+        memory_ids: Specific memories to replay (optional)
+        limit: Max memories to replay if auto-selecting
+        
+    Returns:
+        Summary of replayed memories
+    """
+    try:
+        result = memory_store.replay_memories(
+            memory_ids=memory_ids,
+            limit=limit
         )
         
         return {

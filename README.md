@@ -184,6 +184,7 @@ Three layers working together:
 
 ### Current Features
 
+- **Memory Compression & Replay** ⭐ NEW - Consolidate similar memories, strengthen via replay
 - **Heuristic Quality Assessment** - Auto-runs during sleep cycle - Auto-evaluate memory quality without LLM (usage patterns)
 - **Reflection Phase** - Synthesize memories into higher-level insights (inspired by Generative Agents)
 - **Auto-Reflection** - Sleep scheduler automatically reflects on topics every 24h
