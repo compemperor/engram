@@ -7,7 +7,7 @@ Main memory storage and retrieval system for Engram.
 import json
 import hashlib
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
@@ -75,12 +75,19 @@ class MemoryStore:
         self.metadata = self._load_metadata()
         
         # v0.6.1: Initialize sleep scheduler (background fade cycles)
+        # v0.7.1: Added auto-reflection during sleep
         self.scheduler: Optional[MemoryScheduler] = None
         if enable_sleep_scheduler:
             self.scheduler = MemoryScheduler(
                 fade_callback=self.apply_fade_cycle,
                 interval_hours=sleep_interval_hours,
-                start_delay_minutes=sleep_start_delay_minutes
+                start_delay_minutes=sleep_start_delay_minutes,
+                # v0.7.1: Auto-reflection callbacks
+                reflect_callback=self.reflect,
+                get_reflection_candidates_callback=self.get_reflection_candidates,
+                enable_auto_reflect=True,
+                reflect_min_memories=5,
+                reflect_min_days_since_last=7
             )
             self.scheduler.start()
     
@@ -906,3 +913,71 @@ class MemoryStore:
         reflections.sort(key=lambda m: m.timestamp, reverse=True)
         
         return reflections
+    
+    def get_reflection_candidates(
+        self,
+        min_memories: int = 5,
+        min_days_since_last: int = 7
+    ) -> List[str]:
+        """
+        Get topics that are good candidates for auto-reflection.
+        
+        A topic is a candidate if:
+        1. It has at least min_memories non-reflection memories
+        2. It hasn't been reflected on in the last min_days_since_last days
+        
+        Args:
+            min_memories: Minimum memories required for reflection
+            min_days_since_last: Minimum days since last reflection on this topic
+            
+        Returns:
+            List of topic strings that need reflection
+        """
+        from collections import defaultdict
+        
+        all_memories = self._load_all_memories()
+        
+        # Count memories per base topic (first part before /)
+        topic_counts = defaultdict(int)
+        for m in all_memories:
+            if m.memory_type != MemoryType.REFLECTION:
+                # Get base topic (e.g., "trading" from "trading/risk")
+                base_topic = m.topic.split('/')[0]
+                topic_counts[base_topic] += 1
+        
+        # Get existing reflections and their timestamps
+        reflection_times = {}
+        for m in all_memories:
+            if m.memory_type == MemoryType.REFLECTION:
+                source_topic = m.metadata.get("source_topic") if m.metadata else None
+                if source_topic:
+                    base_topic = source_topic.split('/')[0]
+                    try:
+                        ts = datetime.strptime(m.timestamp, "%Y-%m-%d %H:%M")
+                        if base_topic not in reflection_times or ts > reflection_times[base_topic]:
+                            reflection_times[base_topic] = ts
+                    except:
+                        pass
+        
+        # Find candidates
+        candidates = []
+        now = datetime.now()
+        min_age = timedelta(days=min_days_since_last)
+        
+        for topic, count in topic_counts.items():
+            if count < min_memories:
+                continue
+            
+            # Check if reflected recently
+            last_reflection = reflection_times.get(topic)
+            if last_reflection:
+                age = now - last_reflection
+                if age < min_age:
+                    continue  # Too recent
+            
+            candidates.append(topic)
+        
+        # Sort by memory count (most memories first)
+        candidates.sort(key=lambda t: topic_counts[t], reverse=True)
+        
+        return candidates

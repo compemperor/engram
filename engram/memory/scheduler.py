@@ -1,7 +1,7 @@
 """
 Memory Scheduler - Background maintenance like sleep consolidation
 
-Runs periodic fade cycles automatically, mimicking how the brain
+Runs periodic fade cycles and auto-reflections automatically, mimicking how the brain
 consolidates and forgets during sleep.
 """
 
@@ -9,7 +9,7 @@ import threading
 import time
 import logging
 from datetime import datetime, timedelta
-from typing import Optional, Callable
+from typing import Optional, Callable, List, Dict, Any
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class MemoryScheduler:
     """
     Background scheduler for memory maintenance.
     
-    Runs fade cycles periodically (default: every 24 hours).
+    Runs fade cycles and auto-reflections periodically (default: every 24 hours).
     Like sleep - the system "rests" and consolidates memories.
     """
     
@@ -26,16 +26,30 @@ class MemoryScheduler:
         self,
         fade_callback: Callable,
         interval_hours: float = 24.0,
-        start_delay_minutes: float = 5.0  # Wait before first run
+        start_delay_minutes: float = 5.0,  # Wait before first run
+        # v0.7.1: Auto-reflection settings
+        reflect_callback: Optional[Callable] = None,
+        get_reflection_candidates_callback: Optional[Callable] = None,
+        enable_auto_reflect: bool = True,
+        reflect_min_memories: int = 5,
+        reflect_min_days_since_last: int = 7
     ):
         self.fade_callback = fade_callback
+        self.reflect_callback = reflect_callback
+        self.get_reflection_candidates_callback = get_reflection_candidates_callback
         self.interval_seconds = interval_hours * 3600
         self.start_delay_seconds = start_delay_minutes * 60
+        
+        # Auto-reflection settings
+        self.enable_auto_reflect = enable_auto_reflect
+        self.reflect_min_memories = reflect_min_memories
+        self.reflect_min_days_since_last = reflect_min_days_since_last
         
         self._thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self._last_run: Optional[datetime] = None
         self._next_run: Optional[datetime] = None
+        self._last_reflection_run: Optional[datetime] = None
         self._running = False
     
     def start(self) -> None:
@@ -86,10 +100,11 @@ class MemoryScheduler:
                 break
     
     def _run_fade_cycle(self) -> None:
-        """Execute the fade cycle."""
+        """Execute the fade cycle and auto-reflections."""
         start_time = datetime.utcnow()
         logger.info(f"🌙 Memory sleep cycle starting at {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
         
+        # Phase 1: Fade cycle
         try:
             result = self.fade_callback()
             self._last_run = datetime.utcnow()
@@ -97,15 +112,68 @@ class MemoryScheduler:
             newly_dormant = result.get('newly_dormant', [])
             reactivated = result.get('reactivated', [])
             
-            duration = (self._last_run - start_time).total_seconds()
-            
             logger.info(
-                f"🌙 Memory sleep cycle complete in {duration:.1f}s: "
+                f"🌙 Fade phase complete: "
                 f"{len(newly_dormant)} faded to dormant, {len(reactivated)} reactivated"
             )
         except Exception as e:
-            logger.error(f"🌙 Memory sleep cycle failed: {e}")
+            logger.error(f"🌙 Fade cycle failed: {e}")
             raise
+        
+        # Phase 2: Auto-reflection (v0.7.1)
+        reflections_created = []
+        if self.enable_auto_reflect and self.reflect_callback and self.get_reflection_candidates_callback:
+            try:
+                reflections_created = self._run_auto_reflections()
+            except Exception as e:
+                logger.error(f"🌙 Auto-reflection failed: {e}")
+                # Don't raise - fade cycle succeeded, reflection is optional
+        
+        duration = (datetime.utcnow() - start_time).total_seconds()
+        
+        logger.info(
+            f"🌙 Memory sleep cycle complete in {duration:.1f}s: "
+            f"{len(newly_dormant)} dormant, {len(reactivated)} reactivated, "
+            f"{len(reflections_created)} reflections"
+        )
+    
+    def _run_auto_reflections(self) -> List[str]:
+        """
+        Automatically generate reflections for topics that need them.
+        
+        Returns list of topics that were reflected on.
+        """
+        # Get candidate topics (5+ memories, no recent reflection)
+        candidates = self.get_reflection_candidates_callback(
+            min_memories=self.reflect_min_memories,
+            min_days_since_last=self.reflect_min_days_since_last
+        )
+        
+        if not candidates:
+            logger.info("🌙 No topics need reflection")
+            return []
+        
+        logger.info(f"🌙 Auto-reflecting on {len(candidates)} topics: {candidates[:5]}...")
+        
+        reflected_topics = []
+        for topic in candidates[:3]:  # Max 3 reflections per cycle to avoid overload
+            try:
+                result = self.reflect_callback(
+                    topic=topic,
+                    min_quality=7,
+                    min_memories=self.reflect_min_memories,
+                    include_subtopics=False  # Only reflect on exact topic, not subtopics
+                )
+                reflected_topics.append(topic)
+                logger.info(f"🌙 Reflected on '{topic}': {result.get('source_count', 0)} memories synthesized")
+            except ValueError as e:
+                # Not enough memories - skip
+                logger.debug(f"🌙 Skipped '{topic}': {e}")
+            except Exception as e:
+                logger.warning(f"🌙 Failed to reflect on '{topic}': {e}")
+        
+        self._last_reflection_run = datetime.utcnow()
+        return reflected_topics
     
     def get_status(self) -> dict:
         """Get scheduler status."""
@@ -113,7 +181,12 @@ class MemoryScheduler:
             "running": self._running,
             "interval_hours": self.interval_seconds / 3600,
             "last_run": self._last_run.isoformat() if self._last_run else None,
-            "next_run": self._next_run.isoformat() if self._next_run else None
+            "next_run": self._next_run.isoformat() if self._next_run else None,
+            # v0.7.1: Auto-reflection status
+            "auto_reflect_enabled": self.enable_auto_reflect,
+            "reflect_min_memories": self.reflect_min_memories,
+            "reflect_min_days_since_last": self.reflect_min_days_since_last,
+            "last_reflection_run": self._last_reflection_run.isoformat() if self._last_reflection_run else None
         }
     
     def trigger_now(self) -> dict:

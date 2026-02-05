@@ -86,7 +86,7 @@ class ReflectRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.7.0"
+    version="0.7.1"
 )
 
 # Global state (initialized on startup)
@@ -136,7 +136,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -805,6 +805,32 @@ async def list_reflections(topic: Optional[str] = None):
             "status": "success",
             "count": len(reflections),
             "reflections": [r.to_dict() for r in reflections]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/memory/reflect/candidates")
+async def get_reflection_candidates(
+    min_memories: int = 5,
+    min_days_since_last: int = 7
+):
+    """
+    Get topics that are candidates for auto-reflection.
+    
+    Topics with min_memories+ memories that haven't been reflected
+    on in the last min_days_since_last days.
+    """
+    try:
+        candidates = memory_store.get_reflection_candidates(
+            min_memories=min_memories,
+            min_days_since_last=min_days_since_last
+        )
+        
+        return {
+            "status": "success",
+            "count": len(candidates),
+            "candidates": candidates
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
