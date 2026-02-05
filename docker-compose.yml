@@ -1,11 +1,15 @@
 services:
   engram:
-    image: ghcr.io/compemperor/engram:0.8.1
+    image: ghcr.io/compemperor/engram:0.9.0
     container_name: engram
     ports:
       - "8765:8765"
     volumes:
       - ${HOME}/.openclaw/workspace/engram-data:/data/memories
+    environment:
+      # v0.9.0: Configurable embedding model
+      # Options: intfloat/e5-base-v2 (default), intfloat/e5-large-v2, intfloat/multilingual-e5-large
+      - ENGRAM_EMBEDDING_MODEL=intfloat/e5-large-v2
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8765/health')"]

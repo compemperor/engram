@@ -86,7 +86,7 @@ class ReflectRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.8.1"
+    version="0.9.0"
 )
 
 # Global state (initialized on startup)
@@ -104,7 +104,10 @@ async def startup_event():
     # Use environment variable for data path, default to /data/memories for Docker
     data_path = os.getenv("ENGRAM_DATA_PATH", "/data/memories")
     
-    memory_store = MemoryStore(path=data_path)
+    # v0.9.0: Configurable embedding model via env var
+    embedding_model = os.getenv("ENGRAM_EMBEDDING_MODEL", "intfloat/e5-base-v2")
+    
+    memory_store = MemoryStore(path=data_path, embedding_model=embedding_model)
     mirror_evaluator = MirrorEvaluator(path=data_path)
     drift_detector = DriftDetector(path=data_path)
     
@@ -112,6 +115,7 @@ async def startup_event():
     stats = memory_store.get_stats()
     print(f"  Memory: {stats.get('total_memories', 0)} memories")
     print(f"  FAISS: {'enabled' if memory_store.enable_faiss else 'disabled'}")
+    print(f"  Embedding: {embedding_model}")
     
     # v0.6.1: Show sleep scheduler status
     scheduler_status = memory_store.get_scheduler_status()
@@ -136,7 +140,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.8.1",
+        "version": "0.9.0",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
