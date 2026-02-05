@@ -112,3 +112,19 @@ def recall_context(query, min_quality=8):
 
 **Full guide:** [MEMORY-GUIDE.md](./MEMORY-GUIDE.md)
 
+
+
+### Quality Assessment (v0.8)
+
+Evaluate memory quality using heuristics:
+```python
+# Assess single memory
+r = requests.get(f"{API}/memory/quality/{memory_id}")
+
+# Batch assess
+r = requests.post(f"{API}/memory/quality/assess?limit=10")
+
+# Apply adjustments
+r = requests.post(f"{API}/memory/quality/apply?auto_apply=true")
+```
+

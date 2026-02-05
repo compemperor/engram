@@ -62,6 +62,11 @@ That's it. Everything else is in Engram.
 - Follows knowledge graph relationships
 - Configurable expansion depth (1-3 levels)
 
+**Heuristic Quality Assessment (v0.8)** - Auto-evaluate memory quality
+- GET /memory/quality/{id} to assess single memory
+- POST /memory/quality/assess for batch assessment
+- No LLM required - uses behavioral signals
+
 **Reflection Phase (v0.7)** - Synthesize memories into insights
 - POST /memory/reflect to consolidate topic memories
 - Auto-runs during sleep cycle (every 24h)
