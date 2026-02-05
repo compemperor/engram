@@ -5,6 +5,17 @@
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ENGRAM_DATA_PATH` | `/data/memories` | Path to store memory files (set in Docker image) |
+| `ENGRAM_EMBEDDING_MODEL` | `intfloat/e5-base-v2` | Embedding model for semantic search (v0.9.0) |
+
+### Embedding Model Options
+
+| Model | Dimensions | RAM | Notes |
+|-------|------------|-----|-------|
+| `intfloat/e5-base-v2` | 768 | ~1GB | Default, good balance |
+| `intfloat/e5-large-v2` | 1024 | ~1.5GB | Better semantic quality |
+| `intfloat/multilingual-e5-large` | 1024 | ~1.5GB | Multi-language support |
+
+**Note:** Changing models triggers automatic FAISS index rebuild on startup.
 
 ## MemoryStore Constructor Options
 
@@ -53,6 +64,9 @@ services:
       - "8765:8765"
     volumes:
       - ./memories:/data/memories    # REQUIRED: persist memory data
+    environment:
+      # Optional: upgrade to better embeddings (v0.9.0)
+      - ENGRAM_EMBEDDING_MODEL=intfloat/e5-large-v2
     restart: unless-stopped
 ```
 
