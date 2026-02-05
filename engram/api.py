@@ -86,7 +86,7 @@ class ReflectRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.10.1"
+    version="0.10.2"
 )
 
 # Global state (initialized on startup)
@@ -140,7 +140,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.10.1",
+        "version": "0.10.2",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -253,6 +253,38 @@ async def sync_metadata():
         return {
             "status": "success",
             **result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/memory/archive/{memory_id}")
+async def archive_memory(memory_id: str):
+    """
+    Archive a memory (set status to dormant).
+    Archived memories are excluded from searches but remain in storage.
+    """
+    try:
+        result = memory_store.archive_memory(memory_id)
+        return {
+            "status": "success",
+            **result
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/memory/archived")
+async def list_archived():
+    """List all archived (dormant) memories"""
+    try:
+        archived = memory_store.list_archived()
+        return {
+            "status": "success",
+            "count": len(archived),
+            "memories": archived
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

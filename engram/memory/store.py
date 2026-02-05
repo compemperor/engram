@@ -482,10 +482,19 @@ class MemoryStore:
         self,
         topic: str,
         min_quality: Optional[int] = None,
-        memory_type: Optional[str] = None
+        memory_type: Optional[str] = None,
+        include_archived: bool = False
     ) -> List[Memory]:
         """Recall all memories for a specific topic"""
         memories = self._load_all_memories()
+        
+        # Filter out archived (dormant) memories unless explicitly requested
+        if not include_archived:
+            memories = [
+                m for m in memories
+                if getattr(m, 'status', MemoryStatus.ACTIVE) != MemoryStatus.DORMANT
+                and str(getattr(m, 'status', 'active')) != 'dormant'
+            ]
         
         # Filter by topic
         memories = [m for m in memories if m.topic == topic]
@@ -731,6 +740,62 @@ class MemoryStore:
         }
         
         return {"before": before, "after": after, "synced": True}
+    
+    def archive_memory(self, memory_id: str) -> Dict:
+        """
+        Archive a memory by setting its status to DORMANT.
+        Archived memories are excluded from searches but remain in storage.
+        
+        Args:
+            memory_id: ID of the memory to archive
+            
+        Returns:
+            Dict with status and archived memory info
+        """
+        memories = self._load_all_memories()
+        
+        for memory in memories:
+            if memory.memory_id == memory_id:
+                old_status = memory.status
+                memory.status = MemoryStatus.DORMANT
+                self._save_all_memories(memories)
+                
+                return {
+                    "archived": True,
+                    "memory_id": memory_id,
+                    "topic": memory.topic,
+                    "old_status": str(old_status.value) if hasattr(old_status, 'value') else str(old_status),
+                    "new_status": "dormant"
+                }
+        
+        raise ValueError(f"Memory {memory_id} not found")
+    
+    def list_archived(self) -> List[Dict]:
+        """
+        List all archived (dormant) memories.
+        
+        Returns:
+            List of archived memory summaries
+        """
+        memories = self._load_all_memories()
+        archived = []
+        
+        for memory in memories:
+            status = getattr(memory, 'status', MemoryStatus.ACTIVE)
+            if hasattr(status, 'value'):
+                status_str = status.value
+            else:
+                status_str = str(status)
+            
+            if status_str == 'dormant':
+                archived.append({
+                    "memory_id": memory.memory_id,
+                    "topic": memory.topic,
+                    "lesson": memory.lesson[:100] + "..." if len(memory.lesson) > 100 else memory.lesson,
+                    "timestamp": memory.timestamp
+                })
+        
+        return archived
     
     # v0.7.0: Reflection Phase - Synthesize memories into higher-level insights
     
