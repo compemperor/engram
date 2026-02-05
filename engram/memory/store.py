@@ -680,21 +680,57 @@ class MemoryStore:
         """Get comprehensive statistics"""
         memories = self._load_all_memories()
         
+        # Calculate actual counts from loaded memories (not metadata)
+        total_count = len(memories)
         episodic_count = sum(1 for m in memories if m.memory_type == MemoryType.EPISODIC)
         semantic_count = sum(1 for m in memories if m.memory_type == MemoryType.SEMANTIC)
         reflection_count = sum(1 for m in memories if m.memory_type == MemoryType.REFLECTION)
+        actual_topics = list(set(m.topic for m in memories))
         
         graph_stats = self.knowledge_graph.get_stats()
         recall_stats = self.recall_system.get_statistics()
         
+        # Return actual counts, not metadata (which can drift)
         return {
-            **self.metadata,
+            "total_memories": total_count,
+            "topics": actual_topics,
+            "last_updated": self.metadata.get("last_updated"),
             "episodic_memories": episodic_count,
             "semantic_memories": semantic_count,
             "reflection_memories": reflection_count,
             "knowledge_graph": graph_stats,
             "recall_stats": recall_stats
         }
+    
+    def sync_metadata(self) -> Dict:
+        """
+        Recalculate and sync metadata with actual memory state.
+        Fixes drift between metadata counts and actual stored memories.
+        
+        Returns:
+            Dict with before/after counts
+        """
+        memories = self._load_all_memories()
+        
+        before = {
+            "total": self.metadata.get("total_memories", 0),
+            "topics": len(self.metadata.get("topics", []))
+        }
+        
+        # Recalculate from actual data
+        actual_topics = list(set(m.topic for m in memories))
+        
+        self.metadata["total_memories"] = len(memories)
+        self.metadata["topics"] = actual_topics
+        self.metadata["last_updated"] = datetime.now().isoformat()
+        self._save_metadata()
+        
+        after = {
+            "total": len(memories),
+            "topics": len(actual_topics)
+        }
+        
+        return {"before": before, "after": after, "synced": True}
     
     # v0.7.0: Reflection Phase - Synthesize memories into higher-level insights
     

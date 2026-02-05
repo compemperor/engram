@@ -86,7 +86,7 @@ class ReflectRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.10.0"
+    version="0.10.1"
 )
 
 # Global state (initialized on startup)
@@ -140,7 +140,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.10.0",
+        "version": "0.10.1",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -238,6 +238,22 @@ async def memory_stats():
     try:
         stats = memory_store.get_stats()
         return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/memory/sync")
+async def sync_metadata():
+    """
+    Sync metadata with actual memory state.
+    Fixes drift between metadata counts and actual stored memories.
+    """
+    try:
+        result = memory_store.sync_metadata()
+        return {
+            "status": "success",
+            **result
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
