@@ -1,13 +1,11 @@
 services:
   engram:
-    build: .
-    image: engram:local-dev
+    image: ghcr.io/compemperor/engram:0.11.0
     container_name: engram
     ports:
       - "8765:8765"
     volumes:
       - ${HOME}/.openclaw/engram-data:/data/memories
-      - ./engram:/app/engram
     environment:
       # v0.9.0: Configurable embedding model
       # Options: intfloat/e5-base-v2 (default), intfloat/e5-large-v2, intfloat/multilingual-e5-large
