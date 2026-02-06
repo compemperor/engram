@@ -164,6 +164,9 @@ Three layers working together:
 - [Spaced Repetition](https://en.wikipedia.org/wiki/Spaced_repetition) - Optimal review scheduling
 - [Spreading Activation Theory](https://en.wikipedia.org/wiki/Spreading_activation) - Knowledge graph auto-linking
 
+**Retrieval**
+- [SimpleMem (2026)](https://arxiv.org/abs/2601.02553) - Intent-aware retrieval planning, 26% F1 improvement
+
 **Embeddings**
 - [E5-base-v2](https://huggingface.co/intfloat/e5-base-v2) - High-quality text embeddings
 
