@@ -727,3 +727,28 @@ GET /recall/stats - Get recall statistics
 **Memory Compression & Replay (v0.10)** - Brain-inspired consolidation
 - Merge similar memories automatically
 - Replay at-risk memories to strengthen retention
+
+---
+
+## Active Learning (v0.11)
+
+Engram tracks what you don't know and suggests what to learn.
+
+```bash
+# View knowledge gaps
+curl http://localhost:8765/learning/gaps
+
+# Get learning suggestions
+curl http://localhost:8765/learning/suggest
+
+# Request to learn a topic
+curl -X POST "http://localhost:8765/learning/request?topic=kubernetes"
+
+# Mark as learned
+curl -X POST "http://localhost:8765/learning/resolve?query=kubernetes"
+
+# Stats
+curl http://localhost:8765/learning/stats
+```
+
+Auto-tracks: poor searches (<3 results), failed recalls.
