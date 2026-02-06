@@ -25,6 +25,7 @@ from engram.learning.active import get_tracker, ActiveLearningTracker
 class AddLessonRequest(BaseModel):
     topic: str = Field(..., description="Topic category")
     lesson: str = Field(..., description="The lesson/memory content")
+    memory_type: str = Field("semantic", description="Memory type: episodic or semantic")
     source_quality: Optional[int] = Field(None, ge=1, le=10, description="Source quality (1-10)")
     understanding: Optional[float] = Field(None, ge=1.0, le=5.0, description="Understanding score (1-5)")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
@@ -87,7 +88,7 @@ class ReflectRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.11.0"
+    version="0.11.1"
 )
 
 # Global state (initialized on startup)
@@ -141,7 +142,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.11.0",
+        "version": "0.11.1",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -168,6 +169,7 @@ async def add_lesson(request: AddLessonRequest):
         memory = memory_store.add_lesson(
             topic=request.topic,
             lesson=request.lesson,
+            memory_type=request.memory_type,
             source_quality=request.source_quality,
             understanding=request.understanding,
             metadata=request.metadata
