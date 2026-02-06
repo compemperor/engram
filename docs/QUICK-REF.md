@@ -196,3 +196,32 @@ r = requests.get(f"{API}/learning/stats")
 Gaps are auto-tracked when:
 - Search returns <3 results or score <0.5
 - Recall challenge fails
+
+### Goal-Aligned Drift (v0.12)
+
+Drift measures how aligned your content is with your goals.
+
+**Setup:** Store your goals in memory:
+```bash
+curl -X POST http://localhost:8765/memory/add \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "identity/goals", "lesson": "Build AI agents, learn trading, improve Engram"}'
+
+curl -X POST http://localhost:8765/memory/add \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "identity/interests", "lesson": "Machine learning, cryptocurrency, Swedish stocks"}'
+```
+
+**How it works:**
+- Embeds your content and compares to goals embedding
+- Low drift (< 0.3) = content aligns with goals
+- High drift (> 0.5) = content is off-topic
+
+**Check drift metrics:**
+```bash
+curl http://localhost:8765/mirror/metrics
+# Returns: goal_aligned: true/false, drift scores, etc.
+```
+
+Learning sessions ignore drift (exploration is expected).
+Regular `/memory/add` uses drift in quality gate.
