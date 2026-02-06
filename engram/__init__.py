@@ -5,7 +5,7 @@ Self-improving memory system with quality control, drift detection,
 and learning framework.
 """
 
-__version__ = "0.13.0"
+__version__ = "0.14.0"
 __author__ = "compemperor, Clawdy"
 __license__ = "Apache 2.0"
 

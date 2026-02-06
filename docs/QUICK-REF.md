@@ -262,3 +262,65 @@ curl -X POST http://localhost:8765/memory/search \
 ```
 
 User-specified params always override intent adjustments.
+
+### Reasoning Memory (v0.14)
+
+Store and learn from decision traces, tool calls, and outcomes.
+
+**Add a trace:**
+```bash
+curl -X POST http://localhost:8765/reasoning/trace \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "my-session",
+    "thought": "I need to search for X",
+    "action_type": "tool_call",
+    "action_name": "memory_search",
+    "action_args": {"query": "X"},
+    "observation": "Found 3 results",
+    "outcome": "success"
+  }'
+```
+
+**Get session traces:**
+```bash
+curl http://localhost:8765/reasoning/session/my-session
+```
+
+**Search traces:**
+```bash
+curl -X POST "http://localhost:8765/reasoning/search?query=deploy&outcome=failure"
+```
+
+**Distill session into pattern:**
+```bash
+curl -X POST http://localhost:8765/reasoning/distill/my-session
+# Returns: summary, key_decisions, lesson learned
+```
+
+**Extract skill from successful session:**
+```bash
+curl -X POST http://localhost:8765/reasoning/skill/extract \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "my-session",
+    "name": "release-workflow",
+    "description": "Execute release cycle",
+    "trigger_pattern": "release",
+    "min_success_rate": 0.8
+  }'
+```
+
+**Find skill for task:**
+```bash
+curl -X POST "http://localhost:8765/reasoning/skill/find?task=how%20to%20release"
+```
+
+**Stats:**
+```bash
+curl http://localhost:8765/reasoning/stats
+# Returns: total_traces, outcomes, action_types, total_skills
+```
+
+Based on ReasoningBank, ExpeL, and Voyager research.
+OpenClaw hook available: `reasoning-trace` (captures tool calls automatically).

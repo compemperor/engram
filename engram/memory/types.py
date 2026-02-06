@@ -15,6 +15,23 @@ class MemoryType(str, Enum):
     EPISODIC = "episodic"  # Personal experiences, events (when, where, what happened)
     SEMANTIC = "semantic"  # Facts, rules, concepts (general knowledge)
     REFLECTION = "reflection"  # Synthesized insight from multiple memories
+    REASONING = "reasoning"  # v0.14: Decision traces, tool calls, observations
+
+
+class ActionType(str, Enum):
+    """Types of actions in reasoning traces"""
+    TOOL_CALL = "tool_call"  # Called a tool/function
+    DECISION = "decision"  # Made a decision
+    QUERY = "query"  # Searched/queried something
+    REFLECTION = "reflection"  # Reflected on outcome
+
+
+class TraceOutcome(str, Enum):
+    """Outcome of a reasoning trace"""
+    SUCCESS = "success"
+    FAILURE = "failure"
+    PARTIAL = "partial"
+    PENDING = "pending"
 
 
 class RelationType(str, Enum):
@@ -118,3 +135,132 @@ class RecallAttempt:
     
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
+
+
+# ============================================================================
+# v0.14: Reasoning Memory Types
+# ============================================================================
+
+@dataclass
+class TraceAction:
+    """Action taken in a reasoning trace"""
+    type: ActionType  # tool_call, decision, query, reflection
+    name: str  # Tool name, decision type, or query type
+    args: Dict[str, Any] = field(default_factory=dict)  # Arguments/parameters
+    
+    def to_dict(self) -> Dict[str, Any]:
+        result = asdict(self)
+        result['type'] = self.type.value
+        return result
+
+
+@dataclass
+class ReasoningTrace:
+    """
+    v0.14: A single step in an agent's reasoning process.
+    
+    Captures the Thought-Action-Observation cycle for learning and debugging.
+    Based on ReasoningBank and ExpeL research.
+    """
+    trace_id: str  # Unique identifier
+    session_id: str  # Session this trace belongs to
+    timestamp: str  # When this trace occurred
+    sequence: int  # Order within session (0, 1, 2, ...)
+    
+    # The reasoning cycle
+    thought: Optional[str] = None  # LLM's reasoning/plan
+    action: Optional[TraceAction] = None  # Action taken
+    observation: Optional[str] = None  # Result/feedback from action
+    outcome: TraceOutcome = TraceOutcome.PENDING  # success/failure/partial
+    
+    # Metadata
+    tokens_input: int = 0
+    tokens_output: int = 0
+    duration_ms: int = 0
+    user_feedback: Optional[str] = None  # positive/negative/null
+    
+    # Distillation (Phase 3)
+    distilled_pattern: Optional[str] = None  # Extracted insight
+    related_traces: List[str] = field(default_factory=list)  # Related trace IDs
+    
+    # Skill extraction (Phase 4)
+    skill_id: Optional[str] = None  # If this trace is part of a skill
+    
+    def to_dict(self) -> Dict[str, Any]:
+        result = {
+            'trace_id': self.trace_id,
+            'session_id': self.session_id,
+            'timestamp': self.timestamp,
+            'sequence': self.sequence,
+            'thought': self.thought,
+            'action': self.action.to_dict() if self.action else None,
+            'observation': self.observation,
+            'outcome': self.outcome.value,
+            'tokens_input': self.tokens_input,
+            'tokens_output': self.tokens_output,
+            'duration_ms': self.duration_ms,
+            'user_feedback': self.user_feedback,
+            'distilled_pattern': self.distilled_pattern,
+            'related_traces': self.related_traces,
+            'skill_id': self.skill_id,
+        }
+        return result
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ReasoningTrace':
+        """Create ReasoningTrace from dictionary"""
+        action_data = data.get('action')
+        action = None
+        if action_data:
+            action = TraceAction(
+                type=ActionType(action_data['type']),
+                name=action_data['name'],
+                args=action_data.get('args', {})
+            )
+        
+        return cls(
+            trace_id=data['trace_id'],
+            session_id=data['session_id'],
+            timestamp=data['timestamp'],
+            sequence=data.get('sequence', 0),
+            thought=data.get('thought'),
+            action=action,
+            observation=data.get('observation'),
+            outcome=TraceOutcome(data.get('outcome', 'pending')),
+            tokens_input=data.get('tokens_input', 0),
+            tokens_output=data.get('tokens_output', 0),
+            duration_ms=data.get('duration_ms', 0),
+            user_feedback=data.get('user_feedback'),
+            distilled_pattern=data.get('distilled_pattern'),
+            related_traces=data.get('related_traces', []),
+            skill_id=data.get('skill_id'),
+        )
+
+
+@dataclass
+class Skill:
+    """
+    v0.14: A reusable skill extracted from successful trace sequences.
+    
+    Based on Voyager's skill library concept.
+    """
+    skill_id: str
+    name: str  # Human-readable name
+    description: str  # What this skill does
+    
+    # The skill definition
+    trigger_pattern: str  # When to use this skill (query pattern)
+    trace_sequence: List[str]  # Ordered trace IDs that form this skill
+    success_rate: float = 0.0  # How often this skill succeeds
+    
+    # Metadata
+    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    last_used: Optional[str] = None
+    use_count: int = 0
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Skill':
+        return cls(**data)

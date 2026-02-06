@@ -41,6 +41,7 @@ Self-improving memory system with quality control, drift detection, and learning
 🔒 **Privacy-First** - Local embeddings, no data leaves your machine  
 🧠 **Smart Memory** - Semantic search with quality filtering  
 🎯 **Intent-Aware Retrieval** - Auto-adjusts search based on query intent (v0.13)  
+🧠 **Reasoning Memory** - Decision traces, skill extraction, learn from success/failure (v0.14)  
 🔁 **Self-Improving** - Quality evaluation and drift detection  
 🧪 **Neuroscience-Inspired** - Dream consolidation, homeostatic regulation  
 📚 **Active Learning** - Tracks knowledge gaps, suggests what to learn (v0.11)  
@@ -184,7 +185,8 @@ Three layers working together:
 
 ### Current Features
 
-- **Intent-Aware Retrieval** ⭐ NEW (v0.13) - Auto-adjusts search params based on query intent
+- **Reasoning Memory** ⭐ NEW (v0.14) - Decision traces, distillation, skill extraction
+- **Intent-Aware Retrieval** (v0.13) - Auto-adjusts search params based on query intent
 - **Memory Compression & Replay** - Consolidate similar memories, strengthen via replay
 - **Heuristic Quality Assessment** - Auto-runs during sleep cycle - Auto-evaluate memory quality without LLM (usage patterns)
 - **Reflection Phase** - Synthesize memories into higher-level insights (inspired by Generative Agents)

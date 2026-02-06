@@ -18,6 +18,9 @@ from engram.mirror.evaluator import MirrorEvaluator
 from engram.mirror.drift import DriftDetector
 from engram.learning.session import LearningSession
 from engram.learning.active import get_tracker, ActiveLearningTracker
+from engram.reasoning.store import ReasoningStore
+from engram.reasoning.distiller import TraceDistiller
+from engram.reasoning.skills import SkillExtractor
 
 
 # Pydantic models for request/response validation
@@ -85,24 +88,61 @@ class ReflectRequest(BaseModel):
     include_subtopics: bool = Field(True, description="Include memories from subtopics")
 
 
+# v0.14: Reasoning Memory Request Models
+
+class AddTraceRequest(BaseModel):
+    """Request to add a reasoning trace"""
+    session_id: str = Field(..., description="Session identifier")
+    thought: Optional[str] = Field(None, description="LLM's reasoning/thought process")
+    action_type: Optional[str] = Field(None, description="Action type: tool_call, decision, query, reflection")
+    action_name: Optional[str] = Field(None, description="Name of the action/tool")
+    action_args: Optional[Dict[str, Any]] = Field(None, description="Action arguments")
+    observation: Optional[str] = Field(None, description="Result/feedback from action")
+    outcome: str = Field("pending", description="Outcome: success, failure, partial, pending")
+    tokens_input: int = Field(0, ge=0, description="Input tokens used")
+    tokens_output: int = Field(0, ge=0, description="Output tokens used")
+    duration_ms: int = Field(0, ge=0, description="Duration in milliseconds")
+    user_feedback: Optional[str] = Field(None, description="User feedback: positive, negative, or null")
+
+
+class UpdateTraceRequest(BaseModel):
+    """Request to update an existing trace"""
+    observation: Optional[str] = Field(None, description="Result/feedback from action")
+    outcome: Optional[str] = Field(None, description="Outcome: success, failure, partial, pending")
+    user_feedback: Optional[str] = Field(None, description="User feedback: positive, negative, or null")
+    distilled_pattern: Optional[str] = Field(None, description="Extracted pattern/insight")
+
+
+class ExtractSkillRequest(BaseModel):
+    """Request to extract a skill from a session"""
+    session_id: str = Field(..., description="Session to extract skill from")
+    name: str = Field(..., description="Human-readable skill name")
+    description: str = Field(..., description="What this skill does")
+    trigger_pattern: str = Field(..., description="When to use this skill (query pattern)")
+    min_success_rate: float = Field(0.7, ge=0.0, le=1.0, description="Minimum success rate required")
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.13.0"
+    version="0.14.0"
 )
 
 # Global state (initialized on startup)
 memory_store: Optional[MemoryStore] = None
 mirror_evaluator: Optional[MirrorEvaluator] = None
 drift_detector: Optional[DriftDetector] = None
+reasoning_store: Optional[ReasoningStore] = None  # v0.14
+trace_distiller: Optional[TraceDistiller] = None  # v0.14
+skill_extractor: Optional[SkillExtractor] = None  # v0.14
 active_sessions: Dict[str, LearningSession] = {}
 
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize Engram components on startup"""
-    global memory_store, mirror_evaluator, drift_detector
+    global memory_store, mirror_evaluator, drift_detector, reasoning_store, trace_distiller, skill_extractor
     
     # Use environment variable for data path, default to /data/memories for Docker
     data_path = os.getenv("ENGRAM_DATA_PATH", "/data/memories")
@@ -114,11 +154,20 @@ async def startup_event():
     mirror_evaluator = MirrorEvaluator(path=data_path, memory_store=memory_store)
     drift_detector = DriftDetector(path=data_path)
     
+    # v0.14: Initialize reasoning memory components
+    reasoning_store = ReasoningStore(path=data_path)
+    trace_distiller = TraceDistiller(reasoning_store=reasoning_store)
+    skill_extractor = SkillExtractor(reasoning_store=reasoning_store)
+    
     print("✓ Engram API started")
     stats = memory_store.get_stats()
     print(f"  Memory: {stats.get('total_memories', 0)} memories")
     print(f"  FAISS: {'enabled' if memory_store.enable_faiss else 'disabled'}")
     print(f"  Embedding: {embedding_model}")
+    
+    # v0.14: Show reasoning stats
+    reasoning_stats = reasoning_store.get_stats()
+    print(f"  Reasoning: {reasoning_stats.get('total_traces', 0)} traces, {reasoning_stats.get('total_skills', 0)} skills")
     
     # v0.6.1: Show sleep scheduler status
     scheduler_status = memory_store.get_scheduler_status()
@@ -143,7 +192,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.13.0",
+        "version": "0.14.0",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -1269,6 +1318,298 @@ async def get_learning_stats():
         return {
             "status": "success",
             **stats
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# v0.14: Reasoning Memory Endpoints
+# =============================================================================
+
+@app.post("/reasoning/trace")
+async def add_reasoning_trace(request: AddTraceRequest):
+    """
+    Add a reasoning trace (Phase 1).
+    
+    Captures Thought-Action-Observation cycle for learning and debugging.
+    """
+    try:
+        trace = reasoning_store.add_trace(
+            session_id=request.session_id,
+            thought=request.thought,
+            action_type=request.action_type,
+            action_name=request.action_name,
+            action_args=request.action_args,
+            observation=request.observation,
+            outcome=request.outcome,
+            tokens_input=request.tokens_input,
+            tokens_output=request.tokens_output,
+            duration_ms=request.duration_ms,
+            user_feedback=request.user_feedback
+        )
+        
+        return {
+            "status": "success",
+            "trace": trace.to_dict()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/reasoning/trace/{trace_id}")
+async def get_reasoning_trace(trace_id: str):
+    """Get a specific reasoning trace by ID."""
+    try:
+        trace = reasoning_store.get_trace(trace_id)
+        if not trace:
+            raise HTTPException(status_code=404, detail="Trace not found")
+        
+        return {
+            "status": "success",
+            "trace": trace.to_dict()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/reasoning/trace/{trace_id}")
+async def update_reasoning_trace(trace_id: str, request: UpdateTraceRequest):
+    """
+    Update an existing reasoning trace.
+    
+    Use to add observation after action completes, update outcome, or add feedback.
+    """
+    try:
+        trace = reasoning_store.update_trace(
+            trace_id=trace_id,
+            observation=request.observation,
+            outcome=request.outcome,
+            user_feedback=request.user_feedback,
+            distilled_pattern=request.distilled_pattern
+        )
+        
+        if not trace:
+            raise HTTPException(status_code=404, detail="Trace not found")
+        
+        return {
+            "status": "success",
+            "trace": trace.to_dict()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/reasoning/session/{session_id}")
+async def get_session_traces(session_id: str, limit: Optional[int] = None):
+    """Get all reasoning traces for a session, ordered by sequence."""
+    try:
+        traces = reasoning_store.get_session_traces(session_id, limit=limit)
+        
+        return {
+            "status": "success",
+            "session_id": session_id,
+            "count": len(traces),
+            "traces": [t.to_dict() for t in traces]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/reasoning/recent")
+async def get_recent_traces(
+    limit: int = 50,
+    outcome: Optional[str] = None
+):
+    """Get most recent reasoning traces across all sessions."""
+    try:
+        traces = reasoning_store.get_recent_traces(limit=limit, outcome_filter=outcome)
+        
+        return {
+            "status": "success",
+            "count": len(traces),
+            "traces": [t.to_dict() for t in traces]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/reasoning/search")
+async def search_reasoning_traces(
+    query: str,
+    limit: int = 10,
+    outcome: Optional[str] = None,
+    action_type: Optional[str] = None
+):
+    """
+    Search reasoning traces.
+    
+    Searches thought, observation, and action name fields.
+    """
+    try:
+        traces = reasoning_store.search_traces(
+            query=query,
+            limit=limit,
+            outcome_filter=outcome,
+            action_type_filter=action_type
+        )
+        
+        return {
+            "status": "success",
+            "query": query,
+            "count": len(traces),
+            "traces": [t.to_dict() for t in traces]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/reasoning/stats")
+async def get_reasoning_stats():
+    """Get reasoning memory statistics."""
+    try:
+        stats = reasoning_store.get_stats()
+        
+        return {
+            "status": "success",
+            **stats
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Phase 3: Distillation endpoints
+
+@app.post("/reasoning/distill/{session_id}")
+async def distill_session(session_id: str, min_traces: int = 3):
+    """
+    Distill a session's traces into a pattern (Phase 3).
+    
+    Extracts key decisions, success/failure factors, and lessons.
+    """
+    try:
+        pattern = trace_distiller.distill_session(session_id, min_traces=min_traces)
+        
+        if not pattern:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Could not distill session: need at least {min_traces} traces"
+            )
+        
+        return {
+            "status": "success",
+            "pattern": pattern
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Phase 4: Skill endpoints
+
+@app.post("/reasoning/skill/extract")
+async def extract_skill(request: ExtractSkillRequest):
+    """
+    Extract a reusable skill from a successful session (Phase 4).
+    
+    Based on Voyager's skill library concept.
+    """
+    try:
+        skill = skill_extractor.extract_skill_from_session(
+            session_id=request.session_id,
+            name=request.name,
+            description=request.description,
+            trigger_pattern=request.trigger_pattern,
+            min_success_rate=request.min_success_rate
+        )
+        
+        if not skill:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Could not extract skill: session success rate below {request.min_success_rate}"
+            )
+        
+        return {
+            "status": "success",
+            "skill": skill.to_dict()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/reasoning/skills")
+async def get_skills(limit: int = 50):
+    """Get all extracted skills."""
+    try:
+        skills = reasoning_store.get_skills(limit=limit)
+        
+        return {
+            "status": "success",
+            "count": len(skills),
+            "skills": [s.to_dict() for s in skills]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/reasoning/skill/suggest")
+async def suggest_skill_extraction(
+    min_traces: int = 5,
+    min_success_rate: float = 0.8
+):
+    """
+    Suggest sessions that could be extracted as skills.
+    
+    Returns sessions with high success rates that aren't yet skills.
+    """
+    try:
+        suggestions = skill_extractor.suggest_skill_extraction(
+            min_traces=min_traces,
+            min_success_rate=min_success_rate
+        )
+        
+        return {
+            "status": "success",
+            "count": len(suggestions),
+            "suggestions": suggestions
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/reasoning/skill/find")
+async def find_skill_for_task(
+    task: str,
+    min_success_rate: float = 0.5
+):
+    """
+    Find a skill that matches a task description.
+    
+    Returns the best matching skill if found.
+    """
+    try:
+        skill = skill_extractor.find_skill_for_task(
+            task_description=task,
+            min_success_rate=min_success_rate
+        )
+        
+        if not skill:
+            return {
+                "status": "success",
+                "skill": None,
+                "message": "No matching skill found"
+            }
+        
+        return {
+            "status": "success",
+            "skill": skill.to_dict()
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
