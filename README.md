@@ -168,6 +168,12 @@ Three layers working together:
 **Retrieval**
 - [SimpleMem (2026)](https://arxiv.org/abs/2601.02553) - Intent-aware retrieval planning, 26% F1 improvement
 
+**Reasoning & Skills**
+- [ReasoningBank](https://arxiv.org/abs/2503.03488) - Distill traces into reusable strategies
+- [ExpeL](https://arxiv.org/abs/2308.10144) - Experiential learning without fine-tuning
+- [Voyager](https://arxiv.org/abs/2305.16291) - Skill library concept
+- [Generative Agents](https://arxiv.org/abs/2304.03442) - Memory + reflection architecture
+
 **Embeddings**
 - [E5-base-v2](https://huggingface.co/intfloat/e5-base-v2) - High-quality text embeddings
 
