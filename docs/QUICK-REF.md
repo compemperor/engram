@@ -34,10 +34,15 @@ curl -X POST http://localhost:8765/memory/search \
   -H "Content-Type: application/json" \
   -d '{"query": "trading mistakes", "top_k": 5, "min_quality": 8}'
 
-# Store memory
+# Store memory (semantic - default)
 curl -X POST http://localhost:8765/memory/add \
   -H "Content-Type: application/json" \
   -d '{"topic": "trading/risk", "lesson": "Never risk >2%", "source_quality": 10}'
+
+# Store episodic memory (experiences/events)
+curl -X POST http://localhost:8765/memory/add \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "episodes/2026-02-06", "lesson": "User frustrated with repeated mistakes", "memory_type": "episodic", "source_quality": 9}'
 
 # Recall by topic
 curl http://localhost:8765/memory/recall/trading?min_quality=7
