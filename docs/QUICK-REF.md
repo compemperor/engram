@@ -225,3 +225,40 @@ curl http://localhost:8765/mirror/metrics
 
 Learning sessions ignore drift (exploration is expected).
 Regular `/memory/add` uses drift in quality gate.
+
+### Intent-Aware Retrieval (v0.13)
+
+Search automatically adjusts parameters based on query intent.
+
+**Intent Types:**
+| Intent | Detected by | Adjustments |
+|--------|-------------|-------------|
+| `fact_lookup` | "what is", "define", short queries | top_k=3, min_quality=7, no temporal weighting |
+| `procedural` | "how to", "workflow", "steps" | min_quality=8, temporal_weighting=false |
+| `temporal` | "recent", "latest", "when" | temporal_boost=2x, top_k=5 |
+| `exploration` | "explore", "research", "learn" | top_k=10, include_dormant=true, depth=2 |
+| `recall` | "what did I learn", "remember" | top_k=5, context_expansion=true |
+| `relationship` | "related to", "similar", "connected" | top_k=7, depth=2, include_dormant=true |
+
+**Example Response:**
+```json
+{
+  "query": "how to deploy engram",
+  "intent": {
+    "primary": "procedural",
+    "confidence": 0.8,
+    "secondary": null,
+    "adjusted_params": {"min_quality": 8, "use_temporal_weighting": false}
+  },
+  "results": [...]
+}
+```
+
+**Disable intent-aware retrieval:**
+```bash
+curl -X POST http://localhost:8765/memory/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "some query", "intent_aware": false}'
+```
+
+User-specified params always override intent adjustments.
