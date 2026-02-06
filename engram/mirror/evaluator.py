@@ -251,18 +251,18 @@ class MirrorEvaluator:
             goals_text = []
             
             # Try to recall identity/goals
-            goals = self.memory_store.recall("identity/goals", limit=5)
-            for mem in goals:
+            goals = self.memory_store.recall("identity/goals")
+            for mem in goals[:5]:  # Limit to 5
                 goals_text.append(mem.lesson)
             
             # Try to recall identity/interests
-            interests = self.memory_store.recall("identity/interests", limit=5)
-            for mem in interests:
+            interests = self.memory_store.recall("identity/interests")
+            for mem in interests[:5]:  # Limit to 5
                 goals_text.append(mem.lesson)
             
             # Try to recall user/preferences
-            prefs = self.memory_store.recall("user/preferences", limit=3)
-            for mem in prefs:
+            prefs = self.memory_store.recall("user/preferences")
+            for mem in prefs[:3]:  # Limit to 3
                 goals_text.append(mem.lesson)
             
             if not goals_text:

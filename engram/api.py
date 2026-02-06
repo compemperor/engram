@@ -88,7 +88,7 @@ class ReflectRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.12.0"
+    version="0.12.1"
 )
 
 # Global state (initialized on startup)
@@ -142,7 +142,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.12.0",
+        "version": "0.12.1",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -498,7 +498,7 @@ async def consolidate_session(session_id: str):
         if session.insights:
             session_content += " " + " ".join(session.insights)
         
-        # Evaluate with mirror (v0.12.0: includes goal-aligned drift)
+        # Evaluate with mirror (v0.12.1: includes goal-aligned drift)
         evaluation = mirror_evaluator.evaluate_session(
             sources_verified=session.all_sources_verified(),
             understanding_ratings=session.get_understanding_ratings(),
