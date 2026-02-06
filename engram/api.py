@@ -40,6 +40,7 @@ class SearchRequest(BaseModel):
     auto_expand_context: bool = Field(True, description="Auto-expand related memories via knowledge graph")
     expansion_depth: int = Field(1, ge=1, le=3, description="Context expansion depth (1-3)")
     include_dormant: bool = Field(False, description="Include dormant (faded) memories in search")
+    intent_aware: bool = Field(True, description="v0.13: Enable intent-aware retrieval (auto-adjusts params based on query intent)")
 
 
 class EvaluateSessionRequest(BaseModel):
@@ -88,7 +89,7 @@ class ReflectRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.12.1"
+    version="0.13.0"
 )
 
 # Global state (initialized on startup)
@@ -142,7 +143,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.12.1",
+        "version": "0.13.0",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -186,13 +187,14 @@ async def add_lesson(request: AddLessonRequest):
 @app.post("/memory/search")
 async def search_memory(request: SearchRequest):
     """
-    Semantic search across memories with v0.4.0 features:
+    Semantic search across memories with v0.13.0 features:
+    - Intent-aware retrieval (auto-adjusts params based on query intent)
     - Temporal weighting (boost recent + high-quality memories)
     - Context-aware retrieval (auto-expand related memories)
     - Active learning: tracks poor results as knowledge gaps
     """
     try:
-        results = memory_store.search(
+        results, intent_classification = memory_store.search(
             query=request.query,
             top_k=request.top_k,
             min_quality=request.min_quality,
@@ -200,7 +202,8 @@ async def search_memory(request: SearchRequest):
             use_temporal_weighting=request.use_temporal_weighting,
             auto_expand_context=request.auto_expand_context,
             expansion_depth=request.expansion_depth,
-            include_dormant=request.include_dormant
+            include_dormant=request.include_dormant,
+            intent_aware=request.intent_aware
         )
         
         # Track knowledge gaps for active learning
@@ -212,7 +215,8 @@ async def search_memory(request: SearchRequest):
             best_score=best_score
         )
         
-        return {
+        # Build response with intent info
+        response = {
             "query": request.query,
             "count": len(results),
             "temporal_weighting": request.use_temporal_weighting,
@@ -226,6 +230,17 @@ async def search_memory(request: SearchRequest):
                 for r in results
             ]
         }
+        
+        # Add intent classification info if available
+        if intent_classification:
+            response["intent"] = {
+                "primary": intent_classification.primary_intent.value,
+                "confidence": round(intent_classification.confidence, 3),
+                "secondary": intent_classification.secondary_intent.value if intent_classification.secondary_intent else None,
+                "adjusted_params": {k: v for k, v in intent_classification.suggested_params.items() if not k.startswith('_')}
+            }
+        
+        return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

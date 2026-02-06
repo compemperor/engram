@@ -27,6 +27,7 @@ from engram.memory.fade import (
     get_fade_metrics, find_consolidation_candidates, DORMANT_THRESHOLD
 )
 from engram.memory.scheduler import MemoryScheduler
+from engram.memory.intent import get_intent_classifier, IntentClassification, QueryIntent
 
 
 class MemoryStore:
@@ -351,23 +352,55 @@ class MemoryStore:
         use_temporal_weighting: bool = True,  # NEW: temporal weighting
         auto_expand_context: bool = True,  # NEW: auto-expand related memories (v0.4.1: enabled by default)
         expansion_depth: int = 1,  # NEW: how deep to expand
-        include_dormant: bool = False  # v0.6.0: include dormant memories
-    ) -> List[SearchResult]:
+        include_dormant: bool = False,  # v0.6.0: include dormant memories
+        intent_aware: bool = True  # v0.13.0: intent-aware retrieval
+    ) -> tuple[List[SearchResult], Optional[IntentClassification]]:
         """
         Enhanced search with:
         - Type filtering
         - Temporal weighting (recency + importance)
         - Context-aware retrieval (auto-expand related memories)
+        - Intent-aware retrieval (v0.13.0): classifies query intent and adjusts params
+        
+        Returns: (results, intent_classification) where classification is None if intent_aware=False
         """
+        intent_classification = None
+        
+        # v0.13.0: Intent-aware parameter adjustment
+        if intent_aware:
+            classifier = get_intent_classifier()
+            user_params = {
+                'top_k': top_k if top_k != 5 else None,  # Only if user changed from default
+                'min_quality': min_quality,
+                'use_temporal_weighting': use_temporal_weighting if not use_temporal_weighting else None,
+                'auto_expand_context': auto_expand_context if not auto_expand_context else None,
+                'expansion_depth': expansion_depth if expansion_depth != 1 else None,
+                'include_dormant': include_dormant if include_dormant else None,
+            }
+            adjusted_params, intent_classification = classifier.get_adjusted_params(query, user_params)
+            
+            # Apply adjusted params (only if not explicitly set by user)
+            if top_k == 5 and 'top_k' in adjusted_params:
+                top_k = adjusted_params['top_k']
+            if min_quality is None and 'min_quality' in adjusted_params:
+                min_quality = adjusted_params.get('min_quality')
+            if use_temporal_weighting and 'use_temporal_weighting' in adjusted_params:
+                use_temporal_weighting = adjusted_params['use_temporal_weighting']
+            if auto_expand_context and 'auto_expand_context' in adjusted_params:
+                auto_expand_context = adjusted_params['auto_expand_context']
+            if expansion_depth == 1 and 'expansion_depth' in adjusted_params:
+                expansion_depth = adjusted_params['expansion_depth']
+            if not include_dormant and 'include_dormant' in adjusted_params:
+                include_dormant = adjusted_params['include_dormant']
         
         if not self.enable_faiss:
-            return []
+            return [], intent_classification
         
         # Get all memories (don't filter yet - FAISS indices must match)
         all_memories = self._load_all_memories()
         
         if not all_memories:
-            return []
+            return [], intent_classification
         
         # Encode query
         query_embedding = self.embedder.encode(query, is_query=True)  # Query prefix for E5
@@ -474,9 +507,9 @@ class MemoryStore:
                             relationships=relationships
                         ))
             
-            return expanded_results
+            return expanded_results, intent_classification
         
-        return top_results
+        return top_results, intent_classification
     
     def recall(
         self,
