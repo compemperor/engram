@@ -95,7 +95,7 @@ class MirrorEvaluator:
         consolidate = (
             source_quality >= self.quality_threshold and
             understanding >= self.understanding_threshold and
-            drift_score < 0.3  # Low drift
+            drift_score < 0.6  # Allow moderate topic diversity
         )
         
         evaluation = QualityEvaluation(
