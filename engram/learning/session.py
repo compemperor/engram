@@ -6,12 +6,12 @@ Implements the learning-loop framework:
 2. Deep dive (focus on key areas)
 3. Self-verification (check understanding)
 4. Consolidation (save quality learnings)
+
+v0.11.2: Removed markdown file output - sessions stored in Engram memory system
 """
 
-import json
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
-from pathlib import Path
 from typing import List, Optional, Dict, Any
 
 
@@ -50,7 +50,6 @@ class LearningSession:
         self,
         topic: str,
         duration_min: int = 30,
-        output_dir: str = "./memories/learning-sessions",
         enable_verification: bool = True
     ):
         """
@@ -59,15 +58,11 @@ class LearningSession:
         Args:
             topic: Main topic to learn about
             duration_min: Planned duration in minutes
-            output_dir: Directory to save session files
             enable_verification: Enable self-verification checkpoints
         """
         self.topic = topic
         self.duration_min = duration_min
         self.enable_verification = enable_verification
-        
-        self.output_dir = Path(output_dir)
-        self.output_dir.mkdir(parents=True, exist_ok=True)
         
         # Session data
         self.notes: List[LearningNote] = []
@@ -79,11 +74,8 @@ class LearningSession:
         from datetime import timedelta
         self.target_end_time = self.start_time + timedelta(minutes=duration_min)
         
-        # Generate session file name
-        timestamp = self.start_time.strftime("%Y-%m-%d-%H%M%S")
-        safe_topic = "".join(c if c.isalnum() or c in " -" else "" for c in topic)
-        safe_topic = safe_topic.replace(" ", "-")[:50]
-        self.session_file = self.output_dir / f"{timestamp}-{safe_topic}.md"
+        # Generate session ID
+        self.session_id = self.start_time.strftime("%Y%m%d-%H%M%S")
     
     def add_note(
         self,
@@ -153,9 +145,10 @@ class LearningSession:
         Consolidate session and generate summary.
         
         Converts high-quality notes to insights automatically.
+        Returns structured data for storage in Engram memory system.
         
         Returns:
-            Dict with session summary and metrics
+            Dict with session summary, metrics, and data for memory storage
         """
         duration = self.elapsed_time()
         
@@ -181,20 +174,43 @@ class LearningSession:
         
         summary = {
             "topic": self.topic,
+            "session_id": self.session_id,
             "duration_min": round(duration, 1),
             "notes_count": len(self.notes),
             "checkpoints_count": len(self.checkpoints),
             "insights_count": len(self.insights),
             "verified_sources": verified_sources,
             "average_understanding": round(avg_understanding, 2),
-            "session_file": str(self.session_file),
             "timestamp": self.start_time.isoformat()
         }
         
-        # Save session file
-        self._save_session_file(summary)
-        
         return summary
+    
+    def get_notes_for_storage(self) -> List[Dict[str, Any]]:
+        """
+        Get notes formatted for memory storage.
+        
+        Returns:
+            List of note dicts ready for memory system
+        """
+        return [
+            {
+                "content": note.content,
+                "timestamp": note.timestamp,
+                "source_url": note.source_url,
+                "source_quality": note.source_quality
+            }
+            for note in self.notes
+        ]
+    
+    def get_checkpoints_for_storage(self) -> List[Dict[str, Any]]:
+        """
+        Get checkpoints formatted for memory storage.
+        
+        Returns:
+            List of checkpoint dicts
+        """
+        return [asdict(checkpoint) for checkpoint in self.checkpoints]
     
     def get_topics_covered(self) -> List[str]:
         """Get list of topics from checkpoints"""
@@ -263,69 +279,3 @@ class LearningSession:
             "progress_percent": round(progress_pct, 1),
             "target_reached": self.is_target_time_reached()
         }
-    
-    def _save_session_file(self, summary: Dict[str, Any]):
-        """Save session to markdown file"""
-        content = f"""# Learning Session - {self.start_time.strftime("%Y-%m-%d %H:%M")}
-
-**Topic:** {self.topic}  
-**Duration:** {summary['duration_min']} min  
-**Goal:** Deep understanding with self-verification  
-
----
-
-## Progressive Notes
-
-"""
-        
-        for note in self.notes:
-            content += f"### {note.timestamp}\n\n"
-            content += f"{note.content}\n\n"
-            if note.source_url:
-                content += f"**Source:** {note.source_url}\n"
-            if note.source_quality:
-                content += f"**Quality:** {note.source_quality}/10\n"
-            content += "\n"
-        
-        content += "---\n\n## Self-Verification Checkpoints\n\n"
-        
-        for checkpoint in self.checkpoints:
-            content += f"### {checkpoint.timestamp} - {checkpoint.topic}\n\n"
-            content += f"**Understanding:** {checkpoint.understanding}/5\n"
-            content += f"**Sources Verified:** {'✅' if checkpoint.sources_verified else '❌'}\n\n"
-            
-            if checkpoint.gaps:
-                content += "**Gaps:**\n"
-                for gap in checkpoint.gaps:
-                    content += f"- {gap}\n"
-                content += "\n"
-            
-            if checkpoint.applications:
-                content += "**Applications:**\n"
-                for app in checkpoint.applications:
-                    content += f"- {app}\n"
-                content += "\n"
-        
-        if self.insights:
-            content += "---\n\n## Key Insights\n\n"
-            for i, insight in enumerate(self.insights, 1):
-                content += f"{i}. {insight}\n"
-        
-        content += f"""
----
-
-## Summary
-
-**Topics Covered:** {len(self.checkpoints)}  
-**Average Understanding:** {summary['average_understanding']}/5  
-**Verified Sources:** {summary['verified_sources']}/{len(self.notes)}  
-**Key Insights:** {summary['insights_count']}  
-
-**Session Duration:** {summary['duration_min']} min  
-**Status:** {'✅ Complete' if self.checkpoints else '⏳ In Progress'}
-
-🦀 Learning session complete!
-"""
-        
-        with open(self.session_file, "w") as f:
-            f.write(content)

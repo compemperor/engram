@@ -397,14 +397,9 @@ async def start_session(
         if session_id in active_sessions:
             raise HTTPException(status_code=400, detail="Session already exists")
         
-        # Use same data path as MemoryStore
-        memory_path = os.getenv("ENGRAM_DATA_PATH", "/data/memories")
-        output_dir = os.path.join(memory_path, "learning-sessions")
-        
         session = LearningSession(
             topic=topic,
             duration_min=duration_min,
-            output_dir=output_dir,
             enable_verification=True
         )
         
