@@ -17,6 +17,7 @@ from engram.memory.types import SearchResult
 from engram.mirror.evaluator import MirrorEvaluator
 from engram.mirror.drift import DriftDetector
 from engram.learning.session import LearningSession
+from engram.learning.active import get_tracker, ActiveLearningTracker
 
 
 # Pydantic models for request/response validation
@@ -186,6 +187,7 @@ async def search_memory(request: SearchRequest):
     Semantic search across memories with v0.4.0 features:
     - Temporal weighting (boost recent + high-quality memories)
     - Context-aware retrieval (auto-expand related memories)
+    - Active learning: tracks poor results as knowledge gaps
     """
     try:
         results = memory_store.search(
@@ -197,6 +199,15 @@ async def search_memory(request: SearchRequest):
             auto_expand_context=request.auto_expand_context,
             expansion_depth=request.expansion_depth,
             include_dormant=request.include_dormant
+        )
+        
+        # Track knowledge gaps for active learning
+        best_score = results[0].score if results else 0.0
+        tracker = get_tracker()
+        tracker.track_search_gap(
+            query=request.query,
+            results_count=len(results),
+            best_score=best_score
         )
         
         return {
@@ -699,6 +710,15 @@ async def submit_recall(request: RecallSubmitRequest):
             successes = sum(1 for a in attempts if a.success)
             memory.review_success_rate = successes / len(attempts)
         
+        # Track recall failure for active learning
+        if not success:
+            tracker = get_tracker()
+            tracker.track_recall_failure(
+                topic=memory.topic,
+                memory_id=memory.memory_id,
+                confidence=request.confidence
+            )
+        
         # Persist memory updates to JSONL
         memory_store.update_memory(memory)
         
@@ -1125,6 +1145,112 @@ async def replay_memories(
         return {
             "status": "success",
             **result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# v0.11.0: Active Learning endpoints
+@app.get("/learning/gaps")
+async def get_knowledge_gaps(
+    include_resolved: bool = False,
+    min_priority: float = 0.0,
+    limit: int = 20
+):
+    """
+    Get knowledge gaps identified through poor search results and recall failures.
+    
+    Active learning tracks:
+    - Searches with <3 results or low scores
+    - Failed recall challenges
+    - User-requested topics
+    
+    Returns gaps sorted by priority.
+    """
+    try:
+        tracker = get_tracker()
+        gaps = tracker.get_gaps(
+            include_resolved=include_resolved,
+            min_priority=min_priority,
+            limit=limit
+        )
+        
+        return {
+            "status": "success",
+            "count": len(gaps),
+            "gaps": [g.to_dict() for g in gaps]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/learning/suggest")
+async def get_learning_suggestions(limit: int = 5):
+    """
+    Get prioritized learning suggestions based on knowledge gaps.
+    
+    Analyzes gaps and suggests topics to learn, ordered by:
+    - Frequency of gaps
+    - Priority (user requests > recall failures > search misses)
+    - Recency
+    """
+    try:
+        tracker = get_tracker()
+        suggestions = tracker.get_learning_suggestions(limit=limit)
+        
+        return {
+            "status": "success",
+            "count": len(suggestions),
+            "suggestions": [s.to_dict() for s in suggestions]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/learning/request")
+async def request_learning(topic: str, context: str = ""):
+    """
+    User explicitly requests to learn about a topic.
+    
+    High priority gap - will surface in suggestions.
+    """
+    try:
+        tracker = get_tracker()
+        tracker.track_user_request(topic, context)
+        
+        return {
+            "status": "success",
+            "message": f"Added '{topic}' to learning queue with high priority"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/learning/resolve")
+async def resolve_gap(query: str):
+    """Mark a knowledge gap as resolved (learned)."""
+    try:
+        tracker = get_tracker()
+        tracker.resolve_gap(query)
+        
+        return {
+            "status": "success",
+            "message": f"Marked '{query}' as resolved"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/learning/stats")
+async def get_learning_stats():
+    """Get statistics about knowledge gaps and learning progress."""
+    try:
+        tracker = get_tracker()
+        stats = tracker.stats()
+        
+        return {
+            "status": "success",
+            **stats
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
