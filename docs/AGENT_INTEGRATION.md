@@ -307,11 +307,10 @@ if evaluation.consolidate:
 ```python
 from engram.learning import LearningSession
 
-# Create session
+# Create session (v0.11.2+: no file output, stores in memory)
 session = LearningSession(
     topic="fastapi-best-practices",
-    duration_min=30,
-    output_dir="./agent-memories/sessions"
+    duration_min=30
 )
 
 # Take notes
@@ -333,9 +332,9 @@ session.verify(
 # Add insights
 session.add_insight("Dependency injection makes testing easier")
 
-# Consolidate
+# Consolidate (quality insights saved to Engram memory if passes quality gate)
 summary = session.consolidate()
-print(f"Session saved to: {summary['session_file']}")
+print(f"Session: {summary['session_id']} - {summary['insights_count']} insights")
 ```
 
 ---

@@ -123,9 +123,9 @@ session.verify(
 # Add insights
 session.add_insight("Drift detection prevents knowledge degradation")
 
-# Consolidate
+# Consolidate (v0.11.2+: saves to Engram memory, not file)
 summary = session.consolidate()
-print(f"Session saved to: {summary['session_file']}")
+print(f"Session {summary['session_id']}: {summary['insights_count']} insights")
 ```
 
 ---
