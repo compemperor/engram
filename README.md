@@ -42,6 +42,8 @@ Self-improving memory system with quality control, drift detection, and learning
 🧠 **Smart Memory** - Semantic search with quality filtering  
 🔁 **Self-Improving** - Quality evaluation and drift detection  
 🧪 **Neuroscience-Inspired** - Dream consolidation, homeostatic regulation  
+📚 **Active Learning** - Tracks knowledge gaps, suggests what to learn (v0.11)  
+🎭 **Episodic Memory** - Store experiences, not just facts (v0.11)  
 🔌 **Framework-Agnostic** - Works with any LLM  
 📦 **All-in-One** - Single Docker container, FastAPI server  
 

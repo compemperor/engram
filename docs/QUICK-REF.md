@@ -166,3 +166,28 @@ r = requests.get(f"{API}/memory/replay/candidates?limit=10")
 # Replay memories
 r = requests.post(f"{API}/memory/replay?limit=20")
 ```
+
+### Active Learning (v0.11)
+
+Track knowledge gaps and get learning suggestions:
+
+```python
+# View knowledge gaps (poor searches, failed recalls)
+r = requests.get(f"{API}/learning/gaps")
+
+# Get prioritized learning suggestions
+r = requests.get(f"{API}/learning/suggest?limit=5")
+
+# Request to learn a topic (high priority)
+r = requests.post(f"{API}/learning/request?topic=quantum+computing")
+
+# Mark gap as resolved
+r = requests.post(f"{API}/learning/resolve?query=quantum+computing")
+
+# Learning stats
+r = requests.get(f"{API}/learning/stats")
+```
+
+Gaps are auto-tracked when:
+- Search returns <3 results or score <0.5
+- Recall challenge fails
