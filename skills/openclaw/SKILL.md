@@ -752,3 +752,94 @@ curl http://localhost:8765/learning/stats
 ```
 
 Auto-tracks: poor searches (<3 results), failed recalls.
+
+---
+
+## Intent-Aware Retrieval (v0.13)
+
+Search automatically classifies query intent and adjusts parameters:
+
+```bash
+# Intent detection is automatic - just search normally
+curl -X POST http://localhost:8765/memory/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "how to do release cycle"}'
+
+# Response includes intent info:
+# {
+#   "intent": {
+#     "primary": "procedural",
+#     "confidence": 0.8,
+#     "adjusted_params": {"min_quality": 8, "use_temporal_weighting": false}
+#   },
+#   "results": [...]
+# }
+
+# Disable intent-aware if needed
+curl -X POST http://localhost:8765/memory/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "some query", "intent_aware": false}'
+```
+
+**Intent Types:**
+| Intent | Detected by | Adjustments |
+|--------|-------------|-------------|
+| `fact_lookup` | "what is", "define" | top_k=3, min_quality=7 |
+| `procedural` | "how to", "workflow" | min_quality=8, no temporal decay |
+| `temporal` | "recent", "latest" | 2x temporal boost |
+| `exploration` | "explore", "research" | top_k=10, include_dormant |
+| `recall` | "what did I learn" | context expansion on |
+| `relationship` | "related to" | depth=2, include_dormant |
+
+User-specified params always override intent adjustments.
+
+---
+
+## Reasoning Memory (v0.14)
+
+Store and learn from decision traces. Based on ReasoningBank, ExpeL, Voyager research.
+
+```bash
+# Add a reasoning trace (Thought-Action-Observation cycle)
+curl -X POST http://localhost:8765/reasoning/trace \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "my-session",
+    "thought": "I need to find release cycle info",
+    "action_type": "tool_call",
+    "action_name": "memory_search",
+    "action_args": {"query": "release cycle"},
+    "observation": "Found 3 relevant memories",
+    "outcome": "success"
+  }'
+
+# Get all traces for a session
+curl http://localhost:8765/reasoning/session/my-session
+
+# Search traces
+curl -X POST "http://localhost:8765/reasoning/search?query=deploy&outcome=failure"
+
+# Distill session into pattern
+curl -X POST http://localhost:8765/reasoning/distill/my-session
+# Returns: summary, key_decisions, lesson learned
+
+# Extract reusable skill from successful session
+curl -X POST http://localhost:8765/reasoning/skill/extract \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "my-session",
+    "name": "release-workflow",
+    "description": "Execute release cycle",
+    "trigger_pattern": "release",
+    "min_success_rate": 0.8
+  }'
+
+# Find skill for a task
+curl -X POST "http://localhost:8765/reasoning/skill/find?task=how%20to%20release"
+
+# Get reasoning stats
+curl http://localhost:8765/reasoning/stats
+# Returns: total_traces, outcomes, action_types, total_skills
+```
+
+**OpenClaw Hook:** Enable `reasoning-trace` hook to auto-capture tool calls.

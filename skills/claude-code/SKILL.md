@@ -58,6 +58,10 @@ That's it. Everything else is in Engram.
 - Exponential recency decay (30-day half-life)
 - Quality boost based on source_quality (1-10)
 
+**Context-Aware Retrieval** - Auto-expand related memories
+- Follows knowledge graph relationships
+- Configurable expansion depth (1-3 levels)
+
 **Heuristic Quality Assessment (v0.8)** - Auto-evaluate memory quality
 - GET /memory/quality/{id} to assess single memory
 - POST /memory/quality/assess for batch assessment
@@ -71,10 +75,6 @@ That's it. Everything else is in Engram.
 - Options: e5-base-v2 (default), e5-large-v2, multilingual-e5-large
 - Creates "reflection" memory type linked to sources
 - GET /memory/reflect/candidates to see what needs reflection
-
-**Context-Aware Retrieval** - Auto-expand related memories
-- Follows knowledge graph relationships
-- Configurable expansion depth (1-3 levels)
 
 ---
 
@@ -260,6 +260,30 @@ print(f"Semantic: {stats['semantic_memories']}")
 print(f"Topics: {stats['topics']}")
 ```
 
+### Sync Metadata (v0.10.1+)
+
+If metadata counts drift from actual storage, sync them:
+
+```python
+r = requests.post(f"{API}/memory/sync")
+result = r.json()
+print(f"Before: {result['before']}, After: {result['after']}")
+```
+
+### Archive Memory (v0.10.2+)
+
+Archive (soft-delete) memories - they're excluded from search/recall but remain in storage:
+
+```python
+# Archive a memory
+r = requests.post(f"{API}/memory/archive/{memory_id}")
+print(r.json())  # {"status": "success", "archived": true, ...}
+
+# List all archived memories
+r = requests.get(f"{API}/memory/archived")
+print(f"Archived: {r.json()['count']} memories")
+```
+
 ### Active Recall
 
 Engram can quiz you on memories to strengthen retention:
@@ -273,17 +297,21 @@ print(challenge["question"])  # "What is the key lesson about X?"
 print(challenge["difficulty"])  # "medium"
 
 # After answering, submit your response
-requests.post(f"{API}/recall/submit", json={
-    "challenge_id": challenge["id"],
+r = requests.post(f"{API}/recall/submit", json={
+    "memory_id": challenge["memory_id"],
     "answer": "Your answer here",
     "confidence": 0.8  # 0-1 scale
 })
+result = r.json()
+print(f"Success: {result['success']}, Similarity: {result['similarity']}")
 
 # View recall stats
 r = requests.get(f"{API}/recall/stats")
 stats = r.json()["statistics"]
 print(f"Success rate: {stats['success_rate']*100}%")
 ```
+
+**v0.10.3:** Answers are evaluated using semantic similarity (embeddings), not exact matching. Threshold: 0.75.
 
 ### Reflection Phase (v0.7)
 
@@ -699,3 +727,119 @@ GET /recall/stats - Get recall statistics
 **Memory Compression & Replay (v0.10)** - Brain-inspired consolidation
 - Merge similar memories automatically
 - Replay at-risk memories to strengthen retention
+
+---
+
+## Active Learning (v0.11)
+
+Engram tracks what you don't know and suggests what to learn.
+
+```bash
+# View knowledge gaps
+curl http://localhost:8765/learning/gaps
+
+# Get learning suggestions
+curl http://localhost:8765/learning/suggest
+
+# Request to learn a topic
+curl -X POST "http://localhost:8765/learning/request?topic=kubernetes"
+
+# Mark as learned
+curl -X POST "http://localhost:8765/learning/resolve?query=kubernetes"
+
+# Stats
+curl http://localhost:8765/learning/stats
+```
+
+Auto-tracks: poor searches (<3 results), failed recalls.
+
+---
+
+## Intent-Aware Retrieval (v0.13)
+
+Search automatically classifies query intent and adjusts parameters:
+
+```bash
+# Intent detection is automatic - just search normally
+curl -X POST http://localhost:8765/memory/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "how to do release cycle"}'
+
+# Response includes intent info:
+# {
+#   "intent": {
+#     "primary": "procedural",
+#     "confidence": 0.8,
+#     "adjusted_params": {"min_quality": 8, "use_temporal_weighting": false}
+#   },
+#   "results": [...]
+# }
+
+# Disable intent-aware if needed
+curl -X POST http://localhost:8765/memory/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "some query", "intent_aware": false}'
+```
+
+**Intent Types:**
+| Intent | Detected by | Adjustments |
+|--------|-------------|-------------|
+| `fact_lookup` | "what is", "define" | top_k=3, min_quality=7 |
+| `procedural` | "how to", "workflow" | min_quality=8, no temporal decay |
+| `temporal` | "recent", "latest" | 2x temporal boost |
+| `exploration` | "explore", "research" | top_k=10, include_dormant |
+| `recall` | "what did I learn" | context expansion on |
+| `relationship` | "related to" | depth=2, include_dormant |
+
+User-specified params always override intent adjustments.
+
+---
+
+## Reasoning Memory (v0.14)
+
+Store and learn from decision traces. Based on ReasoningBank, ExpeL, Voyager research.
+
+```bash
+# Add a reasoning trace (Thought-Action-Observation cycle)
+curl -X POST http://localhost:8765/reasoning/trace \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "my-session",
+    "thought": "I need to find release cycle info",
+    "action_type": "tool_call",
+    "action_name": "memory_search",
+    "action_args": {"query": "release cycle"},
+    "observation": "Found 3 relevant memories",
+    "outcome": "success"
+  }'
+
+# Get all traces for a session
+curl http://localhost:8765/reasoning/session/my-session
+
+# Search traces
+curl -X POST "http://localhost:8765/reasoning/search?query=deploy&outcome=failure"
+
+# Distill session into pattern
+curl -X POST http://localhost:8765/reasoning/distill/my-session
+# Returns: summary, key_decisions, lesson learned
+
+# Extract reusable skill from successful session
+curl -X POST http://localhost:8765/reasoning/skill/extract \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "my-session",
+    "name": "release-workflow",
+    "description": "Execute release cycle",
+    "trigger_pattern": "release",
+    "min_success_rate": 0.8
+  }'
+
+# Find skill for a task
+curl -X POST "http://localhost:8765/reasoning/skill/find?task=how%20to%20release"
+
+# Get reasoning stats
+curl http://localhost:8765/reasoning/stats
+# Returns: total_traces, outcomes, action_types, total_skills
+```
+
+**OpenClaw Hook:** Enable `reasoning-trace` hook to auto-capture tool calls.
