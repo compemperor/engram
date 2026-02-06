@@ -88,7 +88,7 @@ class ReflectRequest(BaseModel):
 app = FastAPI(
     title="Engram API",
     description="Memory traces for AI agents - Self-improving memory system with knowledge graphs and active recall",
-    version="0.11.4"
+    version="0.12.0"
 )
 
 # Global state (initialized on startup)
@@ -110,7 +110,7 @@ async def startup_event():
     embedding_model = os.getenv("ENGRAM_EMBEDDING_MODEL", "intfloat/e5-base-v2")
     
     memory_store = MemoryStore(path=data_path, embedding_model=embedding_model)
-    mirror_evaluator = MirrorEvaluator(path=data_path)
+    mirror_evaluator = MirrorEvaluator(path=data_path, memory_store=memory_store)
     drift_detector = DriftDetector(path=data_path)
     
     print("✓ Engram API started")
@@ -142,7 +142,7 @@ async def root():
     """API root - returns basic info"""
     return {
         "service": "Engram API",
-        "version": "0.11.4",
+        "version": "0.12.0",
         "description": "Memory traces for AI agents with temporal weighting, context expansion, knowledge graphs, and active recall",
         "docs": "/docs",
         "health": "/health"
@@ -493,11 +493,17 @@ async def consolidate_session(session_id: str):
         session = active_sessions[session_id]
         summary = session.consolidate()
         
-        # Evaluate with mirror
+        # Combine session content for goal-aligned drift calculation
+        session_content = " ".join([note.content for note in session.notes])
+        if session.insights:
+            session_content += " " + " ".join(session.insights)
+        
+        # Evaluate with mirror (v0.12.0: includes goal-aligned drift)
         evaluation = mirror_evaluator.evaluate_session(
             sources_verified=session.all_sources_verified(),
             understanding_ratings=session.get_understanding_ratings(),
-            topics=session.get_topics_covered()
+            topics=session.get_topics_covered(),
+            content=session_content
         )
         
         # Save quality insights if consolidation recommended

@@ -2,13 +2,19 @@
 MirrorEvaluator - Quality evaluation for learning sessions and memories
 
 Inspired by Butterfly RSI's self-correction principles.
+
+v0.12.0: Goal-aligned drift calculation using semantic similarity
 """
 
 import json
+import numpy as np
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from engram.memory.store import MemoryStore
 
 
 @dataclass
@@ -33,7 +39,7 @@ class MirrorEvaluator:
     Features:
     - Source quality scoring
     - Understanding depth evaluation
-    - Drift detection from goals/persona
+    - Goal-aligned drift detection (v0.12.0)
     - Consolidation decision making
     """
     
@@ -41,7 +47,8 @@ class MirrorEvaluator:
         self,
         path: str = "./memories",
         quality_threshold: float = 7.0,
-        understanding_threshold: float = 3.0
+        understanding_threshold: float = 3.0,
+        memory_store: Optional["MemoryStore"] = None
     ):
         """
         Initialize evaluator.
@@ -50,6 +57,7 @@ class MirrorEvaluator:
             path: Directory for storing evaluation metrics
             quality_threshold: Minimum quality score for consolidation (0-10)
             understanding_threshold: Minimum understanding score (0-5)
+            memory_store: Optional MemoryStore for goal-aligned drift calculation
         """
         self.path = Path(path)
         self.path.mkdir(parents=True, exist_ok=True)
@@ -59,15 +67,25 @@ class MirrorEvaluator:
         
         self.quality_threshold = quality_threshold
         self.understanding_threshold = understanding_threshold
+        self.memory_store = memory_store
+        
+        # Cache for goal embeddings
+        self._goals_embedding: Optional[np.ndarray] = None
+        self._goals_cache_time: Optional[datetime] = None
         
         # Load state
         self.state = self._load_state()
+    
+    def set_memory_store(self, memory_store: "MemoryStore"):
+        """Set memory store reference (for late binding)"""
+        self.memory_store = memory_store
     
     def evaluate_session(
         self,
         sources_verified: bool,
         understanding_ratings: List[float],
         topics: List[str],
+        content: Optional[str] = None,
         notes: Optional[str] = None
     ) -> QualityEvaluation:
         """
@@ -77,6 +95,7 @@ class MirrorEvaluator:
             sources_verified: Were all sources verified against primary sources?
             understanding_ratings: List of understanding scores (1-5) per topic
             topics: List of topics covered
+            content: Optional content for goal-aligned drift calculation
             notes: Optional evaluation notes
         
         Returns:
@@ -88,8 +107,8 @@ class MirrorEvaluator:
         # Understanding depth (average of ratings)
         understanding = sum(understanding_ratings) / len(understanding_ratings) if understanding_ratings else 0.0
         
-        # Drift calculation (placeholder - can be enhanced)
-        drift_score = self._calculate_drift(topics)
+        # Goal-aligned drift calculation
+        drift_score = self._calculate_drift(topics, content)
         
         # Consolidation decision
         # Note: drift_score NOT checked for learning sessions - exploration is expected
@@ -137,7 +156,9 @@ class MirrorEvaluator:
         """
         source_quality = 9.0 if source_verified else 6.0
         understanding_score = understanding if understanding else 3.0
-        drift_score = self._calculate_drift([topic])
+        
+        # Goal-aligned drift using lesson content
+        drift_score = self._calculate_drift([topic], lesson)
         
         consolidate = (
             source_quality >= self.quality_threshold and
@@ -165,6 +186,7 @@ class MirrorEvaluator:
             "average_quality": self.state.get("average_quality", 0.0),
             "average_understanding": self.state.get("average_understanding", 0.0),
             "total_evaluations": self.state.get("total_evaluations", 0),
+            "goal_aligned": self.memory_store is not None,
             "last_updated": self.state.get("last_updated")
         }
     
@@ -207,26 +229,123 @@ class MirrorEvaluator:
     
     # Private methods
     
-    def _calculate_drift(self, topics: List[str]) -> float:
+    def _get_goals_embedding(self) -> Optional[np.ndarray]:
         """
-        Calculate drift from recent topics.
+        Get cached goals embedding, refreshing if needed.
         
-        Placeholder implementation - can be enhanced with:
-        - Persona alignment checking
-        - Goal divergence detection
-        - Topic diversity metrics
+        Searches for identity/goals and identity/interests in memory,
+        combines them, and caches the embedding.
         """
+        if self.memory_store is None:
+            return None
+        
+        # Check cache (refresh every 5 minutes)
+        now = datetime.now()
+        if (self._goals_embedding is not None and 
+            self._goals_cache_time is not None and
+            (now - self._goals_cache_time).total_seconds() < 300):
+            return self._goals_embedding
+        
+        try:
+            # Search for goals and interests
+            goals_text = []
+            
+            # Try to recall identity/goals
+            goals = self.memory_store.recall("identity/goals", limit=5)
+            for mem in goals:
+                goals_text.append(mem.lesson)
+            
+            # Try to recall identity/interests
+            interests = self.memory_store.recall("identity/interests", limit=5)
+            for mem in interests:
+                goals_text.append(mem.lesson)
+            
+            # Try to recall user/preferences
+            prefs = self.memory_store.recall("user/preferences", limit=3)
+            for mem in prefs:
+                goals_text.append(mem.lesson)
+            
+            if not goals_text:
+                # No goals found - can't calculate goal-aligned drift
+                return None
+            
+            # Combine and embed
+            combined_goals = " ".join(goals_text)
+            self._goals_embedding = self.memory_store.embedder.encode(
+                combined_goals, 
+                is_query=False
+            )
+            self._goals_cache_time = now
+            
+            return self._goals_embedding
+            
+        except Exception as e:
+            print(f"[MirrorEvaluator] Error getting goals embedding: {e}")
+            return None
+    
+    def _calculate_drift(self, topics: List[str], content: Optional[str] = None) -> float:
+        """
+        Calculate drift using goal alignment.
+        
+        v0.12.0: Uses semantic similarity between content and stored goals.
+        If no goals are stored or no memory_store, falls back to topic diversity.
+        
+        Args:
+            topics: List of topics being evaluated
+            content: Optional content to compare against goals
+        
+        Returns:
+            Drift score 0-1 (0 = perfectly aligned, 1 = completely off-topic)
+        """
+        # Try goal-aligned drift first
+        if content and self.memory_store is not None:
+            goals_embedding = self._get_goals_embedding()
+            
+            if goals_embedding is not None:
+                try:
+                    # Embed the content
+                    content_embedding = self.memory_store.embedder.encode(
+                        content,
+                        is_query=False
+                    )
+                    
+                    # Calculate cosine similarity
+                    similarity = self._cosine_similarity(content_embedding, goals_embedding)
+                    
+                    # Convert to drift (high similarity = low drift)
+                    drift = 1.0 - similarity
+                    
+                    # Clamp to 0-1
+                    return max(0.0, min(1.0, drift))
+                    
+                except Exception as e:
+                    print(f"[MirrorEvaluator] Error calculating goal drift: {e}")
+                    # Fall through to topic-based drift
+        
+        # Fallback: topic diversity-based drift
         recent_topics = self.state.get("recent_topics", [])
         
         if not recent_topics:
             return 0.0
         
-        # Simple diversity-based drift
-        # More diverse topics = higher drift
         unique_topics = set(recent_topics[-10:] + topics)
-        diversity = len(unique_topics) / 10  # Normalize to 0-1
+        diversity = len(unique_topics) / 10
         
         return min(diversity, 1.0)
+    
+    def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
+        """Calculate cosine similarity between two vectors"""
+        a = a.flatten()
+        b = b.flatten()
+        
+        dot_product = np.dot(a, b)
+        norm_a = np.linalg.norm(a)
+        norm_b = np.linalg.norm(b)
+        
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
+        
+        return float(dot_product / (norm_a * norm_b))
     
     def _save_metric(self, evaluation: QualityEvaluation):
         """Append evaluation to metrics file"""
