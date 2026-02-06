@@ -92,10 +92,10 @@ class MirrorEvaluator:
         drift_score = self._calculate_drift(topics)
         
         # Consolidation decision
+        # Note: drift_score NOT checked for learning sessions - exploration is expected
         consolidate = (
             source_quality >= self.quality_threshold and
-            understanding >= self.understanding_threshold and
-            drift_score < 0.6  # Allow moderate topic diversity
+            understanding >= self.understanding_threshold
         )
         
         evaluation = QualityEvaluation(
